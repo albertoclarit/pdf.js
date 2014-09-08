@@ -143,7 +143,8 @@ try to scale the actual control, but will center it in the space a scaled contro
 If you wish to scale these controls, create your own control generation function as set it using
 setControlRenderClosureByType().
 
-## END FORMS SPECIFIC README
+## >> END FORMS SPECIFIC README <<
+## >> BEGIN BASIC PDF.JS README <<
 
 PDF.js is a Portable Document Format (PDF) viewer that is built with HTML5.
 
