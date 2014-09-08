@@ -127,6 +127,7 @@ elements placement on the pdf.
 
 + If choosing to create a closure for rendering radio buttons, the following code is highly recommended as the basis
 of the radio button element:
+
     $ var control = document.createElement('input');
     $ control.type='radio';
     $ control.value = itemProperties.groupingId;
