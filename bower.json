@@ -1,0 +1,13 @@
+{
+  "name": "pdf.js.forms",
+  "version": "0.8.0",
+  "main": [
+    "build/pdf.js",
+    "build/pdf.worker.js"
+  ],
+  "keywords": [
+    "pdf.js",
+    "forms",
+    "pdf"
+  ]
+}

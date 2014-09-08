@@ -526,26 +526,11 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
 
     return {
 
-        //setValue: function(id,value) {
-        //    value[id]=value;
-        //},
-        //
-        //getValue: function(id) {
-        //    if (typeof(value[id])!='undefined') {
-        //        return value[id];
-        //    }
-        //    return null;
-        //},
-
-        // Returns an array of objects, where each object has a name, id, and type property.
-        getFormElements: function() {
-            var elements = [];
-            var elementId;
-            for(elementId in formFields['CHECK_BOX']) {
-
-            }
-        },
-
+        /**
+         * A function that will render all the form elements for a particular form element type (CHECK_BOX, TEXT, DROP_DOWN or RADIO_BUTTON)
+         * @param {function} closure A function with parameters 'itemProperties' and 'viewport' that will render a form element and return the node and NOT a rendered string
+         * @param {type} type The type of form element to render (CHECK_BOX, TEXT, DROP_DOWN or RADIO_BUTTON)
+         */
         setControlRenderClosureByType: function(closure,type) {
             if (type!='CHECK_BOX' && type!='TEXT' && type!='DROP_DOWN' && type!='RADIO_BUTTON') {
                 throw "type must be one of the following: CHECK_BOX, TEXT, DROP_DOWN, RADIO_BUTTON";
@@ -561,6 +546,11 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
             }
         },
 
+        /**
+         * A function that will render one form element that matches the specified form element id
+         * @param {function} closure A function with parameters 'itemProperties' and 'viewport' that will render a form element and return the node and NOT a rendered string
+         * @param {string} id The id of the form element we wish to render in the closure
+         */
         setControlRenderClosureById: function(closure,id) {
             if (!closure) {
                 try {
@@ -573,6 +563,9 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
             }
         },
 
+        /**
+         * @return {array} An array of values of the form elements in format [elementId]=value
+         */
         getFormValues: function() {
             var values = {};
             var elementId;
@@ -618,8 +611,17 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
             }
             return values;
         },
-
+        /**
+         * @param {number} width A width to render - false to not specify width
+         * @param {number} height A height to render - false to not specify height
+         * @param {objec} page A page to render
+         * @param {node} target A node reference to a document element to render into
+         * @param {bool} doForm Whether or not to draw the form - defaults to true
+         * @param {array} values Optional array of values to place in the form elements
+         */
         render: function (width, height, page, target, doForm, values) {
+            _tabIndex = 1;
+
             if (typeof(doForm)!='boolean') {
                 doForm = true;
             }

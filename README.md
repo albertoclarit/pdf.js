@@ -1,4 +1,140 @@
-# PDF.js
+# PDF.js / pdf.js.forms
+
+pdf.js.forms is a fork of [PDF.js](https://github.com/mozilla/pdf.js). The purpose of this fork was to implement fillable
+web forms of pdf.forms using PDF.js. The base changes all occur in core\annotation.js
+and display\forms.js. Rendering is still entirely done through pdf.js, _except form
+widgets are no longer rendered graphically_ by pdf.js. Instead, a second layer with
+web form elements is rendered over the canvas.
+
+## TO USE FORMS:
+To render a form use the PDFJS.FormFunctionality.render call. A width or height can
+be specified, if both are specified this creates a bounding box that the pdf will fit
+inside of.
+
+    $var target = document.getElementById('target');
+    $pdf.getPage(1).then(function(page) {
+    $    PDFJS.FormFunctionality.render(800,800,page,target);
+    $});
+
+A page may be rendered without rendering the form. This is seemingly identical to pdf.js's
+normal page render except that the scaling math is done for you if you wish to render to
+a bounded box. For example say you wish to render a page no wider than 200 pixels or no
+taller than 200 pixels, such as for a thumbnail, but not render the form you may do the
+following call:
+
+    $ PDFJS.FormFunctionality.render(200,200,page,target,false);
+
+Either of the first two size parameters may be set to either a number, or false, but at
+least one must be specified. If only one is specified, the other parameter will be treated
+as unlimited. An example where we want a maximum width of 800, but don't care how tall
+
+    $ PDFJS.FormFunctionality.render(800,false,page,target);
+
+The values in the form elements may be overriden at render time by passing in an object
+with alternate values.
+
+    $ var values {'ADDR1': '21 Jump Street', 'CITY': 'San Marino'};
+    $ PDFJS.FormFunctionality.render(800,800,page,target,true,values);
+
+The values in the form may be retrieved manually of course outside of the pdf.js.forms library,
+but there is also a call to simplify retrieval of those values. The function will return an
+array of values of the form elements in format \[elementId\]=value.
+
+    $ var values = PDFJS.FormFunctionality.getFormValues();
+
+The forms library also allows the rendering of a particular element (as defined by id) or of
+a class of elements to be handled by a closure, or function. For example, to have all
+text elements rendered by closure, and not by the base library.
+
+    $ var myClosure = function(itemProperties,viewport) {
+    $     control = document.createElement('input');
+    $     // set some stuff
+    $     return control;
+    $ };
+    $ PDFJS.FormFunctionality.setControlRenderClosureByType(myClosure,'TEXT');
+
+The basic types are:
++ CHECK_BOX - Check boxes
++ TEXT - All _input_ controls of type text, file and password as well as _textarea_s
++ DROP_DOWN - Regular drop downs and multiselects
++ RADIO_BUTTON - Radio buttons
+
+A closure may be specified for just on element, based on id as well. This might be useful
+in many scenarios, including scenarios where you wish to alter the basic nature of an element,
+such as turning a text box for Country into a drop down.
+
+Depending on the source element type, the properties that define the element can vary. All
+elements will have the following properties defined. Note that all diplay type values are scales
+to the viewport:
+
++ id - The id of the item, coming from the fullName property in the source
++ originalName - An unaltered original name from the pdf
++ tabindex - An auto generated tab index
++ type - the type of the item; can be CHECK_BOX, TEXT, DROP_DOWN, RADIO_BUTTON or PUSH_BUTTON. Currently PUSH_BUTTONS are ignored
++ fieldFlags - The flags from the underlaying PDF document for the widget
++ correctedId - An id that drops any grouping data from the fullName property. Often in radio buttons. If not found
+it matches the id property
++ groupingId - The grouping id (usually a number) that indicates a unique key for the widget in the group. If not
+part of a group, this will be zero.
++ isGroupMember - If this widget is part of a group
++ fontSize - The size of the font, applied to the positional div
++ textAlignment - The text alignment
++ fontSizeControl - A font size that has been appropriately scaled to match the size of the control it should be embedded in.
+This can come from the definition in the PDF if it was specified, otherwise an attempt is made to calculate it to ensure it fits
+in the control sensibly. This is also calculated to make multi-line text areas not look crazy
+
+Additionally, each of the basic element types will have their own properties.
+
+#### Checkboxes (CHECK_BOX)
+
++ selected - If the checkbox item is selected
+
+#### Texts (TEXT)
+
++ value - The value of the element
++ multiLine - If the text element is multiple lines, aka a text area
++ password - If the text element is a password element
++ fileUpload - If the text element is a file element
++ richText - If the text element is a rich text element
++ maxlen - The maximum length of the value, if any
++ x - The X position of the element
++ y - The Y position of the element
++ width - The width of the element
++ height - The height of the element
+
+#### Selects (DROP_DOWN)
+
++ value - The value of the element
++ options - The selectable choice values/source of options for the element. Each option consists of an object with
+a 'value' and 'text' property.
++ multiSelect - If the element is a multi-select element
++ allowTextEntry - If the element allows entry of an item not in the list of options. (Currently not supported by
+the default element renderers in the library).
+
+#### Radio Buttons (RADIO_BUTTON)
+
++ selected - If the radio  button item is selected
+
+## Notes
++ Since the form elements are basic html elements, the library does not provide any simplification
+of access to the html form elements, such as value setting functions on the fly. The only exceptions
+to this are that the default values may be passed on render, and the values may be retrieved en masse
+using the getFormValues() function.
+
++ When defining your own closures to handle rendering, note that you do not need to position the element yourself.
+Each element when returned from the closure will then be placed in a positional element that itself will ensure the
+elements placement on the pdf.
+
+## Gotchas
++ Currently the form library does not get the _default_ selected values for multiple-select choice
+controls from the base pdf.
+
++ Radio buttons and check boxes do not scale reliably in most browsers. As a result the library does not
+try to scale the actual control, but will center it in the space a scaled control would have occupied.
+If you wish to scale these controls, create your own control generation function as set it using
+setControlRenderClosureByType().
+
+## END FORMS SPECIFIC README
 
 PDF.js is a Portable Document Format (PDF) viewer that is built with HTML5.
 
