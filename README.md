@@ -82,6 +82,10 @@ part of a group, this will be zero.
 + fontSizeControl - A font size that has been appropriately scaled to match the size of the control it should be embedded in.
 This can come from the definition in the PDF if it was specified, otherwise an attempt is made to calculate it to ensure it fits
 in the control sensibly. This is also calculated to make multi-line text areas not look crazy
++ x - The X position of the element
++ y - The Y position of the element
++ width - The width of the element
++ height - The height of the element
 
 Additionally, each of the basic element types will have their own properties.
 
@@ -97,10 +101,6 @@ Additionally, each of the basic element types will have their own properties.
 + fileUpload - If the text element is a file element
 + richText - If the text element is a rich text element
 + maxlen - The maximum length of the value, if any
-+ x - The X position of the element
-+ y - The Y position of the element
-+ width - The width of the element
-+ height - The height of the element
 
 #### Selects (DROP_DOWN)
 
@@ -124,6 +124,14 @@ using the getFormValues() function.
 + When defining your own closures to handle rendering, note that you do not need to position the element yourself.
 Each element when returned from the closure will then be placed in a positional element that itself will ensure the
 elements placement on the pdf.
+
++ If choosing to create a closure for rendering radio buttons, the following code is highly recommended as the basis
+of the radio button element:
+    $ var control = document.createElement('input');
+    $ control.type='radio';
+    $ control.value = itemProperties.groupingId;
+    $ control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
+    $ control.name = itemProperties.correctedId;
 
 ## Gotchas
 + Currently the form library does not get the _default_ selected values for multiple-select choice
