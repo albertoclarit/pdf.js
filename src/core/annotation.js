@@ -101,7 +101,7 @@ var Annotation = (function AnnotationClosure() {
       if (data.borderWidth > 0 && dashArray) {
         if (!isArray(dashArray)) {
           // Ignore the border if dashArray is not actually an array,
-          // this is consistent with the behaviour in Adobe Reader. 
+          // this is consistent with the behaviour in Adobe Reader.
           data.borderWidth = 0;
         } else {
           var dashArrayLength = dashArray.length;
@@ -336,6 +336,199 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
     data.fieldFlags = Util.getInheritableProperty(dict, 'Ff') || 0;
     this.fieldResources = Util.getInheritableProperty(dict, 'DR') || Dict.empty;
 
+    // IAG CODE
+    function document(item, depth, prefix, showFunctions) {
+      if (depth==0)
+        return;
+
+      if (typeof(showFunctions)=='undefined')
+        showFunctions=true;
+
+      var iterations = 0;
+
+      if (typeof(item)=='object') {
+        var key;
+        for(key in item) {
+          iterations ++;
+          if (iterations>30)
+            return;
+          if (typeof(item[key])=='object') {
+            data[prefix+'.'+key] = '{object}';
+            if (key!='xref') {
+              document(item[key],depth-1,prefix+'_'+key,showFunctions);
+            }
+          }
+          else {
+            if (typeof(item[key])=='function') {
+              if (showFunctions)
+                data[prefix+'.'+key] = ' {function}';
+            }
+            else {
+              try {
+                data[prefix+'.'+key] =String(item[key]);
+                if (isDict(item)) {
+                  data[prefix+'.'+key+(dv)] =String(item.get(key));
+                }
+              }
+              catch(e) {
+                data[prefix+'.'+key] = ' ** '+typeof(item[key])+' : '+e.message;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    function dictExplorer(dict, depth) { // because get() can lead to results I don't want
+      if (depth==0)
+        return {'exceededDepth':true};
+
+      var returnObj = {}
+      var iterations = 0;
+
+      if (typeof(dict)=='object') {
+        var key;
+        for(key in dict) {
+          iterations ++;
+          if (iterations>30)
+            return {'exceededLimit':true};
+          if (typeof(dict[key])=='object') {
+            if (key!='xref') {
+              returnObj[key] = dictExplorer(dict[key],depth-1);
+            }
+          }
+          else {
+            try {
+              if (typeof(dict[key])!='function') {
+                returnObj[key] =String(dict[key]);
+                //if (isDict(dict)) {
+                //  returnObj[key+'(dv)'] =String(dict.get(key));
+                //}
+              }
+            }
+            catch(e) {
+              returnObj[key] = ' ** '+typeof(dict[key])+' : '+e.message;
+            }
+          }
+        }
+      }
+      return returnObj;
+    }
+
+    function checkProperties() {
+      try {
+        data.selected = dict.get('V').name=='Yes' ? true : false;
+      }
+      catch(e) {
+        data.selected=false;
+      }
+    }
+
+    function choiceProperties() {
+      data.allowTextEntry = data.fieldFlags & 19 ? true : false;
+      data.multiSelect = data.fieldFlags & 22 ? true : false;
+      try {
+        data.options={};
+        var opt = dict.get('Opt'); // get the dictionary options
+        for (var key in opt) {
+          if (opt.hasOwnProperty(key)) {
+            if (typeof(opt[key])=='object') {
+              data.options[key] = {
+                'value': opt[key][0],
+                'text': opt[key][1]
+              };
+            }
+            else {
+              data.options[key] = {
+                'value': key,
+                'text': opt[key]
+              };
+            }
+          }
+        }
+      }
+      catch(e) {
+        data.options=false;
+      }
+      document(dict.get('Parent'),3,'`parent',false);
+      document(dict,5,'`current',false);
+    }
+
+    function radioProperties () {
+      try {
+        data.selected = dict.get('AS').name!='Off' ? true : false; // an easier way to get at it
+      }
+      catch(e) {
+        data.selected=false;
+      }
+    }
+
+    function textProperties() {
+        data.multiLine = data.fieldFlags & 4096 ? true : false;
+        data.password = data.fieldFlags & 8192 ? true : false;
+        data.fileUpload = data.fieldFlags & 1048576 ? true : false;
+        data.richText=stringToPDFString(Util.getInheritableProperty(dict,'RV') || '');
+        data.maxlen = stringToPDFString(Util.getInheritableProperty(dict,'MaxLen') || '');
+    }
+
+    var regularExp = /\/([\w]+) ([\d]+) Tf/;
+    var fontResults;
+    if (fontResults = regularExp.exec(data.defaultAppearance)) {
+        if (fontResults[2]>0) {
+            data.fontSize = fontResults[2];
+            data.fontFaceIndex = fontResults[1];
+        }
+    }
+    else {
+        data.fontSize = false;
+        data.fontFaceIndex = false;
+    }
+
+    data.readOnly = data.fieldFlags & 1;
+    data.required = data.fieldFlags & 2;
+    data.noExport = data.fieldFlags & 4;
+    data.originalName=stringToPDFString(Util.getInheritableProperty(dict,'T') || '');
+
+    switch(data.fieldType) {
+      case 'Tx':
+        data.formElementType ='TEXT'; //text input
+        break;
+      case 'Btn':
+        if ((data.fieldFlags & 32768)) {
+          data.formElementType ='RADIO_BUTTON'; //radio button
+        }
+        else if (data.fieldFlags & 65536) {
+          data.formElementType ='PUSH_BUTTON'; //push button
+        }
+        else {
+          data.formElementType ='CHECK_BOX';  //checkbox
+        }
+        break;
+      case 'Ch': // choice
+        data.formElementType ='DROP_DOWN'; //drop down
+        break;
+    }
+
+    if (data.formElementType=='TEXT'||data.formElementType=='RADIO_BUTTON'||data.formElementType=='PUSH_BUTTON'||data.formElementType=='CHECK_BOX'||data.formElementType=='DROP_DOWN') {
+      //data.exploredDict = dictExplorer(dict,7);
+      switch(data.formElementType) {
+        case 'CHECK_BOX':
+          checkProperties();
+          break;
+        case 'RADIO_BUTTON':
+          radioProperties();
+          break;
+        case 'DROP_DOWN':
+          choiceProperties();
+          break;
+        case 'TEXT':
+          textProperties();
+          break;
+      }
+    }
+
+    // END IAG CODE
+
     // Building the full field name by collecting the field and
     // its ancestors 'T' data and joining them using '.'.
     var fieldName = [];
@@ -372,6 +565,11 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
   var parent = Annotation.prototype;
   Util.inherit(WidgetAnnotation, Annotation, {
     isViewable: function WidgetAnnotation_isViewable() {
+      // IAG ADDITION
+      if (typeof(this.data.formElementType)!=='undefined') {
+        return false; // Form field we handle. Do not allow them to be rendered as pictures!
+      }
+      // END IAG ADDITION
       if (this.data.fieldType === 'Sig') {
         warn('unimplemented annotation type: Widget signature');
         return false;
