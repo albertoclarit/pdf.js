@@ -11,10 +11,10 @@ To render a form use the PDFJS.FormFunctionality.render call. A width or height 
 be specified, if both are specified this creates a bounding box that the pdf will fit
 inside of.
 
-    $var target = document.getElementById('target');
-    $pdf.getPage(1).then(function(page) {
-    $    PDFJS.FormFunctionality.render(800,800,page,target);
-    $});
+        $var target = document.getElementById('target');
+        $pdf.getPage(1).then(function(page) {
+        $    PDFJS.FormFunctionality.render(800,800,page,target);
+        $});
 
 A page may be rendered without rendering the form. This is seemingly identical to pdf.js's
 normal page render except that the scaling math is done for you if you wish to render to
@@ -22,36 +22,36 @@ a bounded box. For example say you wish to render a page no wider than 200 pixel
 taller than 200 pixels, such as for a thumbnail, but not render the form you may do the
 following call:
 
-    $ PDFJS.FormFunctionality.render(200,200,page,target,false);
+        $ PDFJS.FormFunctionality.render(200,200,page,target,false);
 
 Either of the first two size parameters may be set to either a number, or false, but at
 least one must be specified. If only one is specified, the other parameter will be treated
 as unlimited. An example where we want a maximum width of 800, but don't care how tall
 
-    $ PDFJS.FormFunctionality.render(800,false,page,target);
+        $ PDFJS.FormFunctionality.render(800,false,page,target);
 
 The values in the form elements may be overriden at render time by passing in an object
 with alternate values.
 
-    $ var values {'ADDR1': '21 Jump Street', 'CITY': 'San Marino'};
-    $ PDFJS.FormFunctionality.render(800,800,page,target,true,values);
+        $ var values {'ADDR1': '21 Jump Street', 'CITY': 'San Marino'};
+        $ PDFJS.FormFunctionality.render(800,800,page,target,true,values);
 
 The values in the form may be retrieved manually of course outside of the pdf.js.forms library,
 but there is also a call to simplify retrieval of those values. The function will return an
 array of values of the form elements in format \[elementId\]=value.
 
-    $ var values = PDFJS.FormFunctionality.getFormValues();
+        $ var values = PDFJS.FormFunctionality.getFormValues();
 
 The forms library also allows the rendering of a particular element (as defined by id) or of
 a class of elements to be handled by a closure, or function. For example, to have all
 text elements rendered by closure, and not by the base library.
 
-    $ var myClosure = function(itemProperties,viewport) {
-    $     control = document.createElement('input');
-    $     // set some stuff
-    $     return control;
-    $ };
-    $ PDFJS.FormFunctionality.setControlRenderClosureByType(myClosure,'TEXT');
+        $ var myClosure = function(itemProperties,viewport) {
+        $     control = document.createElement('input');
+        $     // set some stuff
+        $     return control;
+        $ };
+        $ PDFJS.FormFunctionality.setControlRenderClosureByType(myClosure,'TEXT');
 
 The basic types are:
 + CHECK_BOX - Check boxes
@@ -128,11 +128,11 @@ elements placement on the pdf.
 + If choosing to create a closure for rendering radio buttons, the following code is highly recommended as the basis
 of the radio button element:
 
-    $ var control = document.createElement('input');
-    $ control.type='radio';
-    $ control.value = itemProperties.groupingId;
-    $ control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
-    $ control.name = itemProperties.correctedId;
+        $ var control = document.createElement('input');
+        $ control.type='radio';
+        $ control.value = itemProperties.groupingId;
+        $ control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
+        $ control.name = itemProperties.correctedId;
 
 ## Gotchas
 + Currently the form library does not get the _default_ selected values for multiple-select choice
