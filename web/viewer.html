@@ -68,11 +68,15 @@ http://sourceforge.net/adobe/cmap/wiki/License/
     <script src="preferences.js"></script>
     <script src="download_manager.js"></script>
     <script src="view_history.js"></script>
-    <script src="page_view.js"></script>
-    <script src="thumbnail_view.js"></script>
+    <script src="pdf_rendering_queue.js"></script>
+    <script src="pdf_page_view.js"></script>
     <script src="text_layer_builder.js"></script>
-    <script src="document_outline_view.js"></script>
-    <script src="document_attachments_view.js"></script>
+    <script src="annotations_layer_builder.js"></script>
+    <script src="pdf_viewer.js"></script>
+    <script src="pdf_thumbnail_view.js"></script>
+    <script src="pdf_thumbnail_viewer.js"></script>
+    <script src="pdf_outline_view.js"></script>
+    <script src="pdf_attachment_view.js"></script>
     <script src="pdf_find_bar.js"></script>
     <script src="pdf_find_controller.js"></script>
     <script src="pdf_history.js"></script>
@@ -94,8 +98,8 @@ http://sourceforge.net/adobe/cmap/wiki/License/
 
   </head>
 
-  <body tabindex="1">
-    <div id="outerContainer" class="loadingInProgress">
+  <body tabindex="1" class="loadingInProgress">
+    <div id="outerContainer">
 
       <div id="sidebarContainer">
         <div id="toolbarSidebar">
@@ -186,7 +190,7 @@ http://sourceforge.net/adobe/cmap/wiki/License/
             <button id="toggleHandTool" class="secondaryToolbarButton handTool" title="Enable hand tool" tabindex="60" data-l10n-id="hand_tool_enable">
               <span data-l10n-id="hand_tool_enable_label">Enable hand tool</span>
             </button>
-            
+
             <div class="horizontalToolbarSeparator"></div>
 
             <button id="documentProperties" class="secondaryToolbarButton documentProperties" title="Document Properties…" tabindex="61" data-l10n-id="document_properties">
@@ -241,10 +245,10 @@ http://sourceforge.net/adobe/cmap/wiki/License/
                 </a>
 
                 <div class="verticalToolbarSeparator hiddenSmallView"></div>
-                
+
                 <button id="secondaryToolbarToggle" class="toolbarButton" title="Tools" tabindex="36" data-l10n-id="tools">
                   <span data-l10n-id="tools_label">Tools</span>
-                </button> 
+                </button>
               </div>
               <div class="outerCenter">
                 <div class="innerCenter" id="toolbarViewerMiddle">
@@ -264,14 +268,14 @@ http://sourceforge.net/adobe/cmap/wiki/License/
                       <option id="pageFitOption" title="" value="page-fit" data-l10n-id="page_scale_fit">Fit Page</option>
                       <option id="pageWidthOption" title="" value="page-width" data-l10n-id="page_scale_width">Full Width</option>
                       <option id="customScaleOption" title="" value="custom"></option>
-                      <option title="" value="0.5">50%</option>
-                      <option title="" value="0.75">75%</option>
-                      <option title="" value="1">100%</option>
-                      <option title="" value="1.25">125%</option>
-                      <option title="" value="1.5">150%</option>
-                      <option title="" value="2">200%</option>
-                      <option title="" value="3">300%</option>
-                      <option title="" value="4">400%</option>
+                      <option title="" value="0.5" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 50 }'>50%</option>
+                      <option title="" value="0.75" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 75 }'>75%</option>
+                      <option title="" value="1" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 100 }'>100%</option>
+                      <option title="" value="1.25" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 125 }'>125%</option>
+                      <option title="" value="1.5" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 150 }'>150%</option>
+                      <option title="" value="2" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 200 }'>200%</option>
+                      <option title="" value="3" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 300 }'>300%</option>
+                      <option title="" value="4" data-l10n-id="page_scale_percent" data-l10n-args='{ "scale": 400 }'>400%</option>
                     </select>
                   </span>
                 </div>
@@ -298,7 +302,7 @@ http://sourceforge.net/adobe/cmap/wiki/License/
         </menu>
 
         <div id="viewerContainer" tabindex="0">
-          <div id="viewer"></div>
+          <div id="viewer" class="pdfViewer"></div>
         </div>
 
         <div id="errorWrapper" hidden='true'>

@@ -47,6 +47,9 @@ var Stream = (function StreamClosure() {
     getUint16: function Stream_getUint16() {
       var b0 = this.getByte();
       var b1 = this.getByte();
+      if (b0 === -1 || b1 === -1) {
+        return -1;
+      }
       return (b0 << 8) + b1;
     },
     getInt32: function Stream_getInt32() {
@@ -72,6 +75,11 @@ var Stream = (function StreamClosure() {
       }
       this.pos = end;
       return bytes.subarray(pos, end);
+    },
+    peekByte: function Stream_peekByte() {
+      var peekedByte = this.getByte();
+      this.pos--;
+      return peekedByte;
     },
     peekBytes: function Stream_peekBytes(length) {
       var bytes = this.getBytes(length);
@@ -169,6 +177,9 @@ var DecodeStream = (function DecodeStreamClosure() {
     getUint16: function DecodeStream_getUint16() {
       var b0 = this.getByte();
       var b1 = this.getByte();
+      if (b0 === -1 || b1 === -1) {
+        return -1;
+      }
       return (b0 << 8) + b1;
     },
     getInt32: function DecodeStream_getInt32() {
@@ -201,6 +212,11 @@ var DecodeStream = (function DecodeStreamClosure() {
 
       this.pos = end;
       return this.buffer.subarray(pos, end);
+    },
+    peekByte: function DecodeStream_peekByte() {
+      var peekedByte = this.getByte();
+      this.pos--;
+      return peekedByte;
     },
     peekBytes: function DecodeStream_peekBytes(length) {
       var bytes = this.getBytes(length);
@@ -527,7 +543,7 @@ var FlateStream = (function FlateStreamClosure() {
       var end = bufferLength + blockLen;
       this.bufferLength = end;
       if (blockLen === 0) {
-        if (str.peekBytes(1).length === 0) {
+        if (str.peekByte() === -1) {
           this.eof = true;
         }
       } else {
@@ -847,8 +863,15 @@ var PredictorStream = (function PredictorStreamClosure() {
  */
 var JpegStream = (function JpegStreamClosure() {
   function JpegStream(stream, maybeLength, dict, xref) {
-    // TODO: per poppler, some images may have 'junk' before that
-    // need to be removed
+    // Some images may contain 'junk' before the SOI (start-of-image) marker.
+    // Note: this seems to mainly affect inline images.
+    var ch;
+    while ((ch = stream.getByte()) !== -1) {
+      if (ch === 0xFF) { // Find the first byte of the SOI marker (0xFFD8).
+        stream.skip(-1); // Reset the stream position to the SOI.
+        break;
+      }
+    }
     this.stream = stream;
     this.maybeLength = maybeLength;
     this.dict = dict;
@@ -874,7 +897,7 @@ var JpegStream = (function JpegStreamClosure() {
       var jpegImage = new JpegImage();
 
       // checking if values needs to be transformed before conversion
-      if (this.dict && isArray(this.dict.get('Decode'))) {
+      if (this.forceRGB && this.dict && isArray(this.dict.get('Decode'))) {
         var decodeArr = this.dict.get('Decode');
         var bitsPerComponent = this.dict.get('BitsPerComponent') || 8;
         var decodeArrLength = decodeArr.length;
@@ -1033,7 +1056,8 @@ var Jbig2Stream = (function Jbig2StreamClosure() {
 
     var jbig2Image = new Jbig2Image();
 
-    var chunks = [], decodeParams = this.dict.get('DecodeParms');
+    var chunks = [], xref = this.dict.xref;
+    var decodeParams = xref.fetchIfRef(this.dict.get('DecodeParms'));
 
     // According to the PDF specification, DecodeParms can be either
     // a dictionary, or an array whose elements are dictionaries.
@@ -1042,7 +1066,7 @@ var Jbig2Stream = (function Jbig2StreamClosure() {
         warn('JBIG2 - \'DecodeParms\' array with multiple elements ' +
              'not supported.');
       }
-      decodeParams = decodeParams[0];
+      decodeParams = xref.fetchIfRef(decodeParams[0]);
     }
     if (decodeParams && decodeParams.has('JBIG2Globals')) {
       var globalsStream = decodeParams.get('JBIG2Globals');
@@ -2020,9 +2044,13 @@ var CCITTFaxStream = (function CCITTFaxStreamClosure() {
 
       var gotEOL = false;
 
+      if (this.byteAlign) {
+        this.inputBits &= ~7;
+      }
+
       if (!this.eoblock && this.row === this.rows - 1) {
         this.eof = true;
-      } else if (this.eoline || !this.byteAlign) {
+      } else {
         code1 = this.lookBits(12);
         if (this.eoline) {
           while (code1 !== EOF && code1 !== 1) {
@@ -2041,10 +2069,6 @@ var CCITTFaxStream = (function CCITTFaxStreamClosure() {
         } else if (code1 === EOF) {
           this.eof = true;
         }
-      }
-
-      if (this.byteAlign && !gotEOL) {
-        this.inputBits &= ~7;
       }
 
       if (!this.eof && this.encoding > 0) {

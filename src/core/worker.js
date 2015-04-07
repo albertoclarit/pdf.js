@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* globals error, globalScope, InvalidPDFException, info,
-           MissingPDFException, PasswordException, PDFJS, Promise,
-           UnknownErrorException, NetworkManager, LocalPdfManager,
-           NetworkPdfManager, XRefParseException, createPromiseCapability,
-           isInt, PasswordResponses, MessageHandler, Ref, RANGE_CHUNK_SIZE */
+/* globals PDFJS, createPromiseCapability, LocalPdfManager, NetworkPdfManager,
+           NetworkManager, isInt, RANGE_CHUNK_SIZE, MissingPDFException,
+           UnexpectedResponseException, PasswordException, Promise, warn,
+           PasswordResponses, InvalidPDFException, UnknownErrorException,
+           XRefParseException, Ref, info, globalScope, error, MessageHandler */
 
 'use strict';
 
@@ -86,6 +86,7 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
         httpHeaders: source.httpHeaders,
         withCredentials: source.withCredentials
       });
+      var cachedChunks = [];
       var fullRequestXhrId = networkManager.requestFull({
         onHeadersReceived: function onHeadersReceived() {
           if (disableRange) {
@@ -105,6 +106,22 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
 
           var length = fullRequestXhr.getResponseHeader('Content-Length');
           length = parseInt(length, 10);
+//#if (GENERIC || CHROME)
+          if (fullRequestXhr.status === 206) {
+            // Since Chrome 39, there exists a bug where cached responses are
+            // served with status code 206 for non-range requests.
+            // Content-Length does not specify the total size of the resource
+            // when the status code is 206 (see RFC 2616, section 14.16).
+            // In this case, extract the file size from the Content-Range
+            // header, which is defined to be "bytes start-end/length" for
+            // byte range requests.
+            // See https://github.com/mozilla/pdf.js/issues/5512 and
+            // https://code.google.com/p/chromium/issues/detail?id=442318
+            length = fullRequestXhr.getResponseHeader('Content-Range');
+            length = length && /bytes \d+-\d+\/(\d+)/.exec(length);
+            length = length && parseInt(length[1], 10);
+          }
+//#endif
           if (!isInt(length)) {
             return;
           }
@@ -116,11 +133,18 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
             return;
           }
 
-          // NOTE: by cancelling the full request, and then issuing range
-          // requests, there will be an issue for sites where you can only
-          // request the pdf once. However, if this is the case, then the
-          // server should not be returning that it can support range requests.
-          networkManager.abortRequest(fullRequestXhrId);
+          if (networkManager.isStreamingRequest(fullRequestXhrId)) {
+            // We can continue fetching when progressive loading is enabled,
+            // and we don't need the autoFetch feature.
+            source.disableAutoFetch = true;
+          } else {
+            // NOTE: by cancelling the full request, and then issuing range
+            // requests, there will be an issue for sites where you can only
+            // request the pdf once. However, if this is the case, then the
+            // server should not be returning that it can support range
+            // requests.
+            networkManager.abortRequest(fullRequestXhrId);
+          }
 
           try {
             pdfManager = new NetworkPdfManager(source, handler);
@@ -130,10 +154,44 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
           }
         },
 
+        onProgressiveData: source.disableStream ? null :
+            function onProgressiveData(chunk) {
+          if (!pdfManager) {
+            cachedChunks.push(chunk);
+            return;
+          }
+          pdfManager.sendProgressiveData(chunk);
+        },
+
         onDone: function onDone(args) {
+          if (pdfManager) {
+            return; // already processed
+          }
+
+          var pdfFile;
+          if (args === null) {
+            // TODO add some streaming manager, e.g. for unknown length files.
+            // The data was returned in the onProgressiveData, combining...
+            var pdfFileLength = 0, pos = 0;
+            cachedChunks.forEach(function (chunk) {
+              pdfFileLength += chunk.byteLength;
+            });
+            if (source.length && pdfFileLength !== source.length) {
+              warn('reported HTTP length is different from actual');
+            }
+            var pdfFileArray = new Uint8Array(pdfFileLength);
+            cachedChunks.forEach(function (chunk) {
+              pdfFileArray.set(new Uint8Array(chunk), pos);
+              pos += chunk.byteLength;
+            });
+            pdfFile = pdfFileArray.buffer;
+          } else {
+            pdfFile = args.chunk;
+          }
+
           // the data is array, instantiating directly from it
           try {
-            pdfManager = new LocalPdfManager(args.chunk, source.password);
+            pdfManager = new LocalPdfManager(pdfFile, source.password);
             pdfManagerCapability.resolve();
           } catch (ex) {
             pdfManagerCapability.reject(ex);
@@ -141,14 +199,16 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
         },
 
         onError: function onError(status) {
+          var exception;
           if (status === 404) {
-            var exception = new MissingPDFException('Missing PDF "' +
-                                                    source.url + '".');
-            handler.send('MissingPDF', { exception: exception });
+            exception = new MissingPDFException('Missing PDF "' +
+                                                source.url + '".');
+            handler.send('MissingPDF', exception);
           } else {
-            handler.send('DocError', 'Unexpected server response (' +
-                         status + ') while retrieving PDF "' +
-                         source.url + '".');
+            exception = new UnexpectedResponseException(
+              'Unexpected server response (' + status +
+              ') while retrieving PDF "' + source.url + '".', status);
+            handler.send('UnexpectedResponse', exception);
           }
         },
 
@@ -200,26 +260,19 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
       var onFailure = function(e) {
         if (e instanceof PasswordException) {
           if (e.code === PasswordResponses.NEED_PASSWORD) {
-            handler.send('NeedPassword', {
-              exception: e
-            });
+            handler.send('NeedPassword', e);
           } else if (e.code === PasswordResponses.INCORRECT_PASSWORD) {
-            handler.send('IncorrectPassword', {
-              exception: e
-            });
+            handler.send('IncorrectPassword', e);
           }
         } else if (e instanceof InvalidPDFException) {
-          handler.send('InvalidPDF', {
-            exception: e
-          });
+          handler.send('InvalidPDF', e);
         } else if (e instanceof MissingPDFException) {
-          handler.send('MissingPDF', {
-            exception: e
-          });
+          handler.send('MissingPDF', e);
+        } else if (e instanceof UnexpectedResponseException) {
+          handler.send('UnexpectedResponse', e);
         } else {
-          handler.send('UnknownError', {
-            exception: new UnknownErrorException(e.message, e.toString())
-          });
+          handler.send('UnknownError',
+                       new UnknownErrorException(e.message, e.toString()));
         }
       };
 
@@ -233,6 +286,7 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
       PDFJS.cMapPacked = data.cMapPacked === true;
 
       getPdfManager(data).then(function () {
+        handler.send('PDFManagerReady', null);
         pdfManager.onLoadedStream().then(function(stream) {
           handler.send('DataLoaded', { length: stream.bytes.byteLength });
         });
@@ -284,6 +338,12 @@ var WorkerMessageHandler = PDFJS.WorkerMessageHandler = {
     handler.on('GetDestinations',
       function wphSetupGetDestinations(data) {
         return pdfManager.ensureCatalog('destinations');
+      }
+    );
+
+    handler.on('GetDestination',
+      function wphSetupGetDestination(data) {
+        return pdfManager.ensureCatalog('getDestination', [ data.id ]);
       }
     );
 

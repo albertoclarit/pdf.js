@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* globals assert, ColorSpace, DecodeStream, Dict, Encodings,
+/* globals assert, CMapFactory, ColorSpace, DecodeStream, Dict, Encodings,
            error, ErrorFont, Font, FONT_IDENTITY_MATRIX, fontCharsToUnicode,
            FontFlags, ImageKind, info, isArray, isCmd, isDict, isEOF, isName,
-           isNum, isStream, isString, JpegStream, Lexer, Metrics,
+           isNum, isStream, isString, JpegStream, Lexer, Metrics, IdentityCMap,
            MurmurHash3_64, Name, Parser, Pattern, PDFImage, PDFJS, serifFonts,
            stdFontMap, symbolsFonts, getTilingPatternIR, warn, Util, Promise,
-           RefSetCache, isRef, TextRenderingMode, ToUnicodeMap, CMapFactory,
+           RefSetCache, isRef, TextRenderingMode, IdentityToUnicodeMap,
            OPS, UNSUPPORTED_FEATURES, UnsupportedManager, NormalizedUnicodes,
-           IDENTITY_MATRIX, reverseIfRtl, createPromiseCapability,
+           IDENTITY_MATRIX, reverseIfRtl, createPromiseCapability, ToUnicodeMap,
            getFontType */
 
 'use strict';
@@ -171,7 +171,7 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
     buildPaintImageXObject:
         function PartialEvaluator_buildPaintImageXObject(resources, image,
                                                          inline, operatorList,
-                                                         cacheKey, cache) {
+                                                         cacheKey, imageCache) {
       var self = this;
       var dict = image.dict;
       var w = dict.get('Width', 'W');
@@ -209,9 +209,10 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         args = [imgData];
         operatorList.addOp(OPS.paintImageMaskXObject, args);
         if (cacheKey) {
-          cache.key = cacheKey;
-          cache.fn = OPS.paintImageMaskXObject;
-          cache.args = args;
+          imageCache[cacheKey] = {
+            fn: OPS.paintImageMaskXObject,
+            args: args
+          };
         }
         return;
       }
@@ -253,16 +254,17 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
           var imgData = imageObj.createImageData(/* forceRGBA = */ false);
           self.handler.send('obj', [objId, self.pageIndex, 'Image', imgData],
             [imgData.data.buffer]);
-        }).then(null, function (reason) {
+        }).then(undefined, function (reason) {
           warn('Unable to decode image: ' + reason);
           self.handler.send('obj', [objId, self.pageIndex, 'Image', null]);
         });
 
       operatorList.addOp(OPS.paintImageXObject, args);
       if (cacheKey) {
-        cache.key = cacheKey;
-        cache.fn = OPS.paintImageXObject;
-        cache.args = args;
+        imageCache[cacheKey] = {
+          fn: OPS.paintImageXObject,
+          args: args
+        };
       }
     },
 
@@ -656,8 +658,8 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
               }
               // eagerly compile XForm objects
               var name = args[0].name;
-              if (imageCache.key === name) {
-                operatorList.addOp(imageCache.fn, imageCache.args);
+              if (imageCache[name] !== undefined) {
+                operatorList.addOp(imageCache[name].fn, imageCache[name].args);
                 args = null;
                 continue;
               }
@@ -706,10 +708,13 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
                 }, reject);
             case OPS.endInlineImage:
               var cacheKey = args[0].cacheKey;
-              if (cacheKey && imageCache.key === cacheKey) {
-                operatorList.addOp(imageCache.fn, imageCache.args);
-                args = null;
-                continue;
+              if (cacheKey) {
+                var cacheEntry = imageCache[cacheKey];
+                if (cacheEntry !== undefined) {
+                  operatorList.addOp(cacheEntry.fn, cacheEntry.args);
+                  args = null;
+                  continue;
+                }
               }
               self.buildPaintImageXObject(resources, args[0], true,
                 operatorList, cacheKey, imageCache);
@@ -888,7 +893,7 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         styles: Object.create(null)
       };
       var bidiTexts = textContent.items;
-      var SPACE_FACTOR = 0.35;
+      var SPACE_FACTOR = 0.3;
       var MULTI_SPACE_FACTOR = 1.5;
 
       var self = this;
@@ -1306,9 +1311,14 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         // The Symbolic attribute can be misused for regular fonts
         // Heuristic: we have to check if the font is a standard one also
         if (!!(properties.flags & FontFlags.Symbolic)) {
-          encoding = (!properties.file && /Symbol/i.test(properties.name) ?
-                      Encodings.SymbolSetEncoding :
-                      Encodings.MacRomanEncoding);
+          encoding = Encodings.MacRomanEncoding;
+          if (!properties.file) {
+            if (/Symbol/i.test(properties.name)) {
+              encoding = Encodings.SymbolSetEncoding;
+            } else if (/Dingbats/i.test(properties.name)) {
+              encoding = Encodings.ZapfDingbatsEncoding;
+            }
+          }
         }
         properties.defaultEncoding = encoding;
       }
@@ -1322,8 +1332,11 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
       var cmap, cmapObj = toUnicode;
       if (isName(cmapObj)) {
         cmap = CMapFactory.create(cmapObj,
-          { url: PDFJS.cMapUrl, packed: PDFJS.cMapPacked }, null).getMap();
-        return new ToUnicodeMap(cmap);
+          { url: PDFJS.cMapUrl, packed: PDFJS.cMapPacked }, null);
+        if (cmap instanceof IdentityCMap) {
+          return new IdentityToUnicodeMap(0, 0xFFFF);
+        }
+        return new ToUnicodeMap(cmap.getMap());
       } else if (isStream(cmapObj)) {
         cmap = CMapFactory.create(cmapObj,
           { url: PDFJS.cMapUrl, packed: PDFJS.cMapPacked }, null).getMap();
