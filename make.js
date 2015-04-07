@@ -18,6 +18,8 @@
 /* globals cat, cd, cp, echo, env, exec, exit, find, ls, mkdir, mv, process, rm,
            sed, target, test */
 
+// NOTE: FORMS DISABLED BY DEFAULT. TO HAVE FORMS, ALTER THE MAKEFILE YOURSELF (in DEFINES var)
+
 'use strict';
 
 require('./external/shelljs/make');
@@ -67,7 +69,8 @@ var DEFINES = {
   CHROME: false,
   MINIFIED: false,
   SINGLE_FILE: false,
-  COMPONENTS: false
+  COMPONENTS: false,
+  FORMS: false
 };
 
 //
@@ -522,7 +525,7 @@ target.bundle = function(args) {
     'display/font_loader.js',
     'display/annotation_helper.js',
     'display/svg.js',
-    'display/forms.js'
+    'display/scale.js'
   ]);
 
   var srcFiles = builder.getWorkerSrcFiles('src/worker_loader.js');

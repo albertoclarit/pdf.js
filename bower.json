@@ -1,9 +1,10 @@
 {
   "name": "pdf.js.forms",
-  "version": "0.8.0",
+  "version": "1.0.0",
   "main": [
-    "build/pdf.js",
-    "build/pdf.worker.js"
+    "build/dist/build/pdf.combined.js",
+    "build/generic/web/compatibility.js",
+    "build/generic/web/l10n.js"
   ],
   "keywords": [
     "pdf.js",

@@ -349,7 +349,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
     data.fieldType = isName(fieldType) ? fieldType.name : '';
     data.fieldFlags = Util.getInheritableProperty(dict, 'Ff') || 0;
     this.fieldResources = Util.getInheritableProperty(dict, 'DR') || Dict.empty;
-
+//#if (FORMS)
     // IAG CODE
     function checkProperties() {
       try {
@@ -462,6 +462,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
       }
     }
     // END IAG CODE
+//#endif
 
     // Building the full field name by collecting the field and
     // its ancestors 'T' data and joining them using '.'.
@@ -499,11 +500,13 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
   var parent = Annotation.prototype;
   Util.inherit(WidgetAnnotation, Annotation, {
     isViewable: function WidgetAnnotation_isViewable() {
+//#if (FORMS)
       // IAG ADDITION
       if (typeof(this.data.formElementType)!=='undefined') {
         return false; // Form field we handle. Do not allow them to be rendered as pictures!
       }
       // END IAG ADDITION
+//#endif
       if (this.data.fieldType === 'Sig') {
         warn('unimplemented annotation type: Widget signature');
         return false;
