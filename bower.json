@@ -1,14 +1,22 @@
 {
   "name": "pdf.js.forms",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": [
-    "build/dist/build/pdf.combined.js",
-    "build/generic/web/compatibility.js",
-    "build/generic/web/l10n.js"
+    "build/pdf.combined.js",
+    "build/compatibility.js",
+    "build/l10n.js"
   ],
   "keywords": [
     "pdf.js",
     "forms",
     "pdf"
+  ],
+  "ignore": [
+    "src",
+    "test",
+    "web",
+    "extensions",
+    "external",
+    "l10n"
   ]
 }
