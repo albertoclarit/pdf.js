@@ -1,6 +1,6 @@
 {
   "name": "pdf.js.forms",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": [
     "build/dist/build/pdf.combined.js",
     "build/generic/web/compatibility.js",
