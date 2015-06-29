@@ -40,7 +40,7 @@ function setupForm(div, content, viewport) {
   function assignFontStyle(element, item) {
     var fontStyles = '';
     if ('fontSize' in item) {
-      fontStyles += 'font-size: ' + Math.round(item.fontSize *
+      fontStyles += 'font-size: ' + Math.round(item.fontSize ? item.fontSize : 12 *
                                                viewport.fontScale) + 'px;';
     }
     switch (item.textAlignment) {
