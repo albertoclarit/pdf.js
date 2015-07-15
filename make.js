@@ -70,7 +70,7 @@ var DEFINES = {
   MINIFIED: false,
   SINGLE_FILE: false,
   COMPONENTS: false,
-  FORMS: false
+  FORMS: true
 };
 
 //
@@ -525,7 +525,8 @@ target.bundle = function(args) {
     'display/font_loader.js',
     'display/annotation_helper.js',
     'display/svg.js',
-    'display/scale.js'
+    'display/scale.js',
+      'display/forms.js'
   ]);
 
   var srcFiles = builder.getWorkerSrcFiles('src/worker_loader.js');

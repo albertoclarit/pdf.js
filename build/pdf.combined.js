@@ -22,8 +22,8 @@ if (typeof PDFJS === 'undefined') {
   (typeof window !== 'undefined' ? window : this).PDFJS = {};
 }
 
-PDFJS.version = '1.1.58';
-PDFJS.build = 'da9a07b';
+PDFJS.version = '1.1.63';
+PDFJS.build = 'bd0d417';
 
 (function pdfjsWrapper() {
   // Use strict in our context only - users might not want it
@@ -8003,9 +8003,6 @@ var Scale = PDFJS.Scale = (function ScaleFunctionalityClosure() {
             // Add canvas
             //
             var canvas = document.createElement('canvas');
-            canvas.style.position = 'absolute';
-            canvas.style.top = '0';
-            canvas.style.left = '0';
             target.appendChild(canvas);
             canvas.height = viewport.height;
             canvas.width = viewport.width;
