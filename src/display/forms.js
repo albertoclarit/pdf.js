@@ -297,6 +297,7 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
         containerDiv.style.fontSize = itemProperties.fontSize + 'px';
         containerDiv.style.textAlign = itemProperties.textAlignment;
         containerDiv.style.position = 'absolute';
+        containerDiv.style.border = '0 none';
         return containerDiv;
     }
 
@@ -345,13 +346,20 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
                 control.type='text';
             }
         }
-        control.style.width = Math.floor(itemProperties.width-Math.ceil(1.5*viewport.scale))-2 + 'px'; // small amount + borders
-        control.style.height = Math.floor(itemProperties.height-Math.ceil(1.5*viewport.scale))-2 + 'px'; // small amount + borders
+        control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
+        control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
         control.style.textAlign = itemProperties.textAlignment;
-        control.style.fontSize = itemProperties.fontSizeControl + 'px';
+        if (!itemProperties.multiLine) {
+            if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+                control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
+            }
+            else {
+                control.style.fontSize = itemProperties.fontSizeControl + 'px';
+            }
+        }
         control.style.padding = '0';
         control.style.margin = '0';
-        control.style.border = '1px solid black';
+        control.style.border = '1px solid #E6E6E6';
         control.style.display = 'block';
         if (itemProperties.maxlen) {
             control.maxLength=itemProperties.maxlen;
@@ -366,13 +374,18 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
         var control = document.createElement('select');
         if (itemProperties.multiSelect)
             control.multiple=true;
-        control.style.width = Math.floor(itemProperties.width-Math.ceil(1.5*viewport.scale))-2 + 'px'; // small amount + borders
-        control.style.height = Math.floor(itemProperties.height-Math.ceil(1.5*viewport.scale))-2 + 'px'; // small amount + borders
+        control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
+        control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
         control.style.textAlign = itemProperties.textAlignment;
         control.id = itemProperties.id;
         control.name = itemProperties.id;
-        control.style.fontSize = itemProperties.fontSizeControl + 'px';
-        control.style.border = '1px solid black';
+        if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+            control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
+        }
+        else {
+            control.style.fontSize = itemProperties.fontSizeControl + 'px';
+        }
+        control.style.border = '1px solid #E6E6E6';
         control.style.display = 'block';
         if (itemProperties.options) {
             for (var option in itemProperties.options) {
