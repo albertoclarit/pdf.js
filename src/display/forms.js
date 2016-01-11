@@ -357,6 +357,9 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
                 control.style.fontSize = itemProperties.fontSizeControl + 'px';
             }
         }
+        else {
+            control.style.fontSize = itemProperties.fontSizeControl + 'px';
+        }
         control.style.padding = '0';
         control.style.margin = '0';
         control.style.border = '1px solid #E6E6E6';
