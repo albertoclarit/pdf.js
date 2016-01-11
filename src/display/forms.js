@@ -4,6 +4,7 @@
 
 var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClosure() {
 
+    var containFontSize = false; // whether or not to contain font sizes in bounding boxes
     var _tabIndex = 1;
     var defaultScaleFontSize = '80%'; // set to a (string)number for a px amount, or a percentage for pencentage of height '80%'
     var defaultMultilineFontSize = '12'; // Currently I can't get the font size for multi-line items. Fall back
@@ -350,7 +351,7 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
         control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
         control.style.textAlign = itemProperties.textAlignment;
         if (!itemProperties.multiLine) {
-            if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+            if (containFontSize && Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
                 control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
             }
             else {
