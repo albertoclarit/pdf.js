@@ -355,11 +355,21 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
                 control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
             }
             else {
-                control.style.fontSize = itemProperties.fontSizeControl + 'px';
+                if (containFontSize) {
+                    control.style.fontSize = itemProperties.fontSizeControl + 'px';
+                }
+                else {
+                    control.style.fontSize = itemProperties.fontSize + 'px';
+                }
             }
         }
         else {
-            control.style.fontSize = itemProperties.fontSizeControl + 'px';
+            if (containFontSize) {
+                control.style.fontSize = itemProperties.fontSizeControl + 'px';
+            }
+            else {
+                control.style.fontSize = itemProperties.fontSize + 'px';
+            }
         }
         control.style.padding = '0';
         control.style.margin = '0';
