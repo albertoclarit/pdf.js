@@ -222,17 +222,17 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
         if (item.fullName in values) {
             value = values[item.fullName];
         }
-        if (item.multiLine) {
-            item.fontSize = _getFontSize(defaultMultilineFontSize,viewport);
-            if (item.fontSize.indexOf('%')!=-1) { // correct font % here. Must be done post merger
-                var percentage = item.fontSize.substring(0,item.fontSize.indexOf('%'))/100;
-                item.fontSize = Math.round(item.height * percentage * viewport.fontScale);
-                item.fontSizeControl = Math.round(item.height * percentage * viewport.fontScale - Math.ceil(4*viewport.scale)); // font size for a control (input, drop down) in the positional div
-            }
-            else {
-                item.fontSizeControl = item.fontSize;
-            }
-        }
+        //if (item.multiLine) {
+        //    item.fontSize = _getFontSize(defaultMultilineFontSize,viewport);
+        //    if (item.fontSize.indexOf('%')!=-1) { // correct font % here. Must be done post merger
+        //        var percentage = item.fontSize.substring(0,item.fontSize.indexOf('%'))/100;
+        //        item.fontSize = Math.round(item.height * percentage * viewport.fontScale);
+        //        item.fontSizeControl = Math.round(item.height * percentage * viewport.fontScale - Math.ceil(4*viewport.scale)); // font size for a control (input, drop down) in the positional div
+        //    }
+        //    else {
+        //        item.fontSizeControl = item.fontSize;
+        //    }
+        //}
         return {
             value: value,
             multiLine: item.multiLine,
