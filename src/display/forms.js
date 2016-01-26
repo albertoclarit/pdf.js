@@ -14,6 +14,8 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
 
     var formFields = {};
 
+    var postRenderHook = false;
+
     var fieldTypes = {
         UNSUPPORTED: false,
         CHECK_BOX: 'CHECK_BOX',
@@ -535,10 +537,25 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
                     div.appendChild(container);
                 }
             });
+            if (postRenderHook!==false) {
+                postRenderHook();
+            }
         });
     }
 
     return {
+
+        clearControlRendersById: function() {
+            idClosureOverrides = {};
+        },
+
+        clearControlRendersByType: function() {
+            genericClosureOverrides = {};
+        },
+
+        setPostRenderHook: function(hook) {
+            postRenderHook = hook;
+        },
 
         /**
          * A function that will render all the form elements for a particular form element type (CHECK_BOX, TEXT, DROP_DOWN or RADIO_BUTTON)
@@ -689,6 +706,21 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
                 pageHolder.appendChild(formHolder);
                 renderForm(formHolder, page, viewport, values);
             }
+        },
+
+        returnFormElementsOnPage: function(page) {
+            var elements = [];
+
+            page.getAnnotations().then(function(items) {
+                items.forEach(function(item) {
+                    var fieldType;
+                    if ((fieldType=itemType(item))!= fieldTypes.UNSUPPORTED) {
+                        elements.push(item.fullName);
+                    }
+                });
+            });
+
+            return elements;
         }
     }
 })();
