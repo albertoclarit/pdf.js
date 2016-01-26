@@ -73,8 +73,7 @@ var DEFINES = {
   CHROME: false,
   MINIFIED: false,
   SINGLE_FILE: false,
-  COMPONENTS: false,
-  FORMS: true
+  COMPONENTS: false
 };
 
 //
@@ -524,7 +523,7 @@ target.bundle = function(args) {
   var MAIN_SRC_FILES = [
     SRC_DIR + 'display/annotation_layer.js',
     SRC_DIR + 'display/text_layer.js',
-    SRC_DIR + 'display/api.js',
+    SRC_DIR + 'display/api.js'
     SRC_DIR + 'display/forms.js'
   ];
 
