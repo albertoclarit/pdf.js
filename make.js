@@ -486,10 +486,15 @@ target.bundle = function(args) {
   echo('### Bundling files into ' + BUILD_TARGET);
 
   function bundle(filename, outfilename, files, distname, isMainFile) {
+
     var bundleContent = cat(files),
         bundleVersion = VERSION,
         bundleBuild = exec('git log --format="%h" -n 1',
           {silent: true}).output.replace('\n', '');
+
+    for (var f in files) {
+        echo(' (bundle)-> '+files[f]);
+    }
 
     crlfchecker.checkIfCrlfIsPresent(files);
 

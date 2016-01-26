@@ -1,8 +1,23 @@
-(function pdfjsForm() {
 
 'use strict';
 
-var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClosure() {
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define('pdfjs/display/forms', ['exports', 'pdfjs/shared/util', 'pdfjs/shared/global'], factory);
+  } else if (typeof exports !== 'undefined') {
+    factory(exports, require('../shared/util.js'),
+      require('../shared/global.js'));
+  } else {
+    factory((root.pdfjsDisplayFormFunctionality = {}), root.pdfjsSharedUtil,
+      root.pdfjsSharedGlobal);
+  }
+}(this, function (exports, sharedUtil, sharedGlobal) {
+
+var Util = sharedUtil.Util; // @IAG Replace PDFJS.Util calls with this
+var createPromiseCapability = sharedUtil.createPromiseCapability; // Maybe implement promises later
+var PDFJS = sharedGlobal.PDFJS;
+
+var FormFunctionality = (function FormFunctionalityClosure() {
 
     var containFontSize = false; // whether or not to contain font sizes in bounding boxes
     var _tabIndex = 1;
@@ -725,4 +740,7 @@ var FormFunctionality = PDFJS.FormFunctionality = (function FormFunctionalityClo
     }
 })();
 
-}).call((typeof window === 'undefined') ? this : window);
+PDFJS.FormFunctionality = FormFunctionality;
+
+exports.FormFunctionality = FormFunctionality;
+}));
