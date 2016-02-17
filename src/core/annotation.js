@@ -635,7 +635,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
         data.maxlen = stringToPDFString(Util.getInheritableProperty(dict,'MaxLen') || '');
     }
 
-    var regularExp = /\/([\w]+) ([\d]+) Tf/;
+    var regularExp = /\/([\w]+) ([\d]+(\.[\d]+)?) Tf/;
     var fontResults;
     if (fontResults = regularExp.exec(data.defaultAppearance)) {
         if (fontResults[2]>0) {
