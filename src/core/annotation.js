@@ -658,6 +658,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     switch(data.fieldType) {
       case 'Tx':
+		if (data.fieldFlags & 4194304) break; // barcode or similar, ignore
         data.formElementType ='TEXT'; //text input
         break;
       case 'Btn':
@@ -676,25 +677,23 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
         break;
     }
 
-    if (data.formElementType=='TEXT'||data.formElementType=='RADIO_BUTTON'||data.formElementType=='PUSH_BUTTON'||data.formElementType=='CHECK_BOX'||data.formElementType=='DROP_DOWN') {
-      switch(data.formElementType) {
-        case 'CHECK_BOX':
-          checkProperties();
-          break;
-        case 'RADIO_BUTTON':
-          radioProperties();
-          break;
-        case 'DROP_DOWN':
-          choiceProperties();
-          break;
-        case 'TEXT':
-          textProperties();
-          break;
-      }
-    }
+	switch(data.formElementType) {
+		case 'CHECK_BOX':
+			checkProperties();
+			break;
+		case 'RADIO_BUTTON':
+			radioProperties();
+			break;
+		case 'DROP_DOWN':
+			choiceProperties();
+			break;
+		case 'TEXT':
+			textProperties();
+			break;
+	}
 
     if (typeof(this.data.formElementType)!=='undefined' && !this.hasFlag(AnnotationFlag.HIDDEN)) {
-      data.hiddenForForms = true;		// Hidden by the forms rendering, but shown for a "print" intent
+		data.hiddenForForms = true;		// Hidden by the forms rendering, but shown for a "print" intent
     }
     // END IAG CODE
 //#endif

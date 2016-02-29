@@ -448,6 +448,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         if (item.subtype=='Widget') {
             switch(item.fieldType) {
                 case 'Tx':
+					if (item.fieldFlags & 4194304) break; // barcode or similar
                     return fieldTypes.TEXT; //text input
                     break;
                 case 'Btn':
