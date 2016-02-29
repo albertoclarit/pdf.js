@@ -211,7 +211,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             }
         }
         return {
-            selected: selected
+            selected: selected,
+            readOnly: item.readOnly,
         };
     }
 
@@ -230,7 +231,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             }
         }
         return {
-            selected: selected
+            selected: selected,
+            readOnly: item.readOnly,
         };
     }
 
@@ -245,7 +247,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             password: item.password,
             fileUpload: item.fileUpload,
             richText: item.richText,
-            maxlen: item.maxlen
+            readOnly: item.readOnly,
+            maxlen: item.maxlen,
         };
     }
 
@@ -258,7 +261,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             value: value,
             options: item.options,
             multiSelect: item.multiSelect,
-            allowTextEntry: item.allowTextEntry
+            allowTextEntry: item.allowTextEntry,
+            readOnly: item.readOnly,
         };
     }
 
@@ -317,6 +321,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
         if (itemProperties.selected)
             control.checked='checked';
+        if (itemProperties.readOnly)
+            control.disabled='disabled';
         return control;
     }
 
@@ -331,6 +337,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
         if (itemProperties.selected)
             control.checked='checked';
+        if (itemProperties.readOnly)
+            control.disabled='disabled';
         return control;
     }
 
@@ -338,6 +346,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         var control;
         if (itemProperties.multiLine) {
             control = document.createElement('textarea');
+            control.style.resize = "none";
         }
         else {
             control = document.createElement('input');
@@ -382,6 +391,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         if (itemProperties.maxlen) {
             control.maxLength=itemProperties.maxlen;
         }
+        if (itemProperties.readOnly) {
+            control.readOnly = true;
+            control.style.cursor = "not-allowed";
+        }
         control.value = itemProperties.value;
         control.id = itemProperties.id;
         control.name = itemProperties.id;
@@ -419,6 +432,11 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                 control.appendChild(optionElement);
             }
 
+        }
+        if (itemProperties.readOnly)
+        {
+            control.disabled='disabled';
+            control.style.cursor = "not-allowed";
         }
         return control;
     }
@@ -488,21 +506,23 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                     var control;
                     if (typeof(idClosureOverrides[fieldData.correctedId])!='undefined') {
                         control = idClosureOverrides[fieldData.correctedId](fieldData, viewport);
-                        container.appendChild(control);
-                        fieldType = determineControlType(control);
-                        switch (fieldType) {
-                            case fieldTypes.TEXT:
-                                formFields['TEXT'][control.id] = control.id;
-                                break;
-                            case fieldTypes.CHECK_BOX:
-                                formFields['CHECK_BOX'][control.id] = control.id;
-                                break;
-                            case fieldTypes.RADIO_BUTTON:
-                                formFields['RADIO_BUTTON'][control.name] = control.name;
-                                break;
-                            case fieldTypes.DROP_DOWN:
-                                formFields['DROP_DOWN'][control.id] = control.id;
-                                break;
+                        if (control) {
+                            container.appendChild(control);
+                            fieldType = determineControlType(control);
+                            switch (fieldType) {
+                                case fieldTypes.TEXT:
+                                    formFields['TEXT'][control.id] = control.id;
+                                    break;
+                                case fieldTypes.CHECK_BOX:
+                                    formFields['CHECK_BOX'][control.id] = control.id;
+                                    break;
+                                case fieldTypes.RADIO_BUTTON:
+                                    formFields['RADIO_BUTTON'][control.name] = control.name;
+                                    break;
+                                case fieldTypes.DROP_DOWN:
+                                    formFields['DROP_DOWN'][control.id] = control.id;
+                                    break;
+                            }
                         }
                     }
                     else {
@@ -514,8 +534,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                                 else {
                                     control = getTextControl(fieldData, viewport);
                                 }
-                                formFields['TEXT'][control.id] = control.id;
-                                container.appendChild(control);
+                                if (control) {
+                                    formFields['TEXT'][control.id] = control.id;
+                                    container.appendChild(control);
+                                }
                                 break;
                             case fieldTypes.CHECK_BOX:
                                 if (typeof(genericClosureOverrides[fieldType])!='undefined') {
@@ -524,8 +546,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                                 else {
                                     control = getCheckBoxControl(fieldData, viewport);
                                 }
-                                formFields['CHECK_BOX'][control.id] = control.id;
-                                container.appendChild(control);
+                                if (control) {
+                                    formFields['CHECK_BOX'][control.id] = control.id;
+                                    container.appendChild(control);
+                                }
                                 break;
                             case fieldTypes.RADIO_BUTTON:
                                 if (typeof(genericClosureOverrides[fieldType])!='undefined') {
@@ -534,8 +558,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                                 else {
                                     control = getRadioButtonControl(fieldData, viewport);
                                 }
-                                formFields['RADIO_BUTTON'][control.name] = control.name;
-                                container.appendChild(control);
+                                if (control) {
+                                    formFields['RADIO_BUTTON'][control.name] = control.name;
+                                    container.appendChild(control);
+                                }
                                 break;
                             case fieldTypes.DROP_DOWN:
                                 if (typeof(genericClosureOverrides[fieldType])!='undefined') {
@@ -544,8 +570,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                                 else {
                                     control = getDropDownControl(fieldData, viewport);
                                 }
-                                formFields['DROP_DOWN'][control.id] = control.id;
-                                container.appendChild(control);
+                                if (control) {
+                                    formFields['DROP_DOWN'][control.id] = control.id;
+                                    container.appendChild(control);
+                                }
                                 break;
                         }
                     }

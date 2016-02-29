@@ -614,8 +614,10 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
       catch(e) {
         data.options=false;
       }
-      document(dict.get('Parent'),3,'`parent',false);
-      document(dict,5,'`current',false);
+
+      // TODO! The following lines break documents containing dropdowns and selects
+      // TODO! Investigate why these are here: document(dict.get('Parent'),3,'`parent',false);
+      // TODO! Investigate why these are here: document(dict,5,'`current',false);
     }
 
     function radioProperties () {
