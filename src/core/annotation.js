@@ -187,6 +187,7 @@ var Annotation = (function AnnotationClosure() {
      * @return {boolean}
      */
     get viewable() {
+      if (this.data.hiddenForForms) return false;
       if (this.flags) {
         return !this.hasFlag(AnnotationFlag.INVISIBLE) &&
                !this.hasFlag(AnnotationFlag.HIDDEN) &&
@@ -692,8 +693,8 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
       }
     }
 
-    if (typeof(this.data.formElementType)!=='undefined') {
-      this.setFlags(AnnotationFlag.HIDDEN);  // Form field we handle. Do not allow them to be rendered as pictures!
+    if (typeof(this.data.formElementType)!=='undefined' && !this.hasFlag(AnnotationFlag.HIDDEN)) {
+      data.hiddenForForms = true;		// Hidden by the forms rendering, but shown for a "print" intent
     }
     // END IAG CODE
 //#endif

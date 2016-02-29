@@ -310,136 +310,139 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return containerDiv;
     }
 
-    function getCheckBoxControl(itemProperties, viewport) {
-        var control = document.createElement('input');
-        control.type='checkbox';
-        control.value = 1; // do not believe checkboxs have values in pdfs
-        control.id = itemProperties.id;
-        control.name = itemProperties.id;
-        control.style.padding = '0';
-        control.style.margin = '0';
-        control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
-        if (itemProperties.selected)
-            control.checked='checked';
-        if (itemProperties.readOnly)
-            control.disabled='disabled';
-        return control;
-    }
+	// These are the default creation routines for form components (unless overrides are provided by id or type)
+	var defaultCreationRoutines = {};
 
-    function getRadioButtonControl(itemProperties, viewport) {
-        var control = document.createElement('input');
-        control.type='radio';
-        control.value = itemProperties.groupingId;
-        control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
-        control.name = itemProperties.correctedId;
-        control.style.padding = '0';
-        control.style.margin = '0';
-        control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
-        if (itemProperties.selected)
-            control.checked='checked';
-        if (itemProperties.readOnly)
-            control.disabled='disabled';
-        return control;
-    }
+	defaultCreationRoutines[fieldTypes.CHECK_BOX] = function(itemProperties, viewport) {
+		var control = document.createElement('input');
+		control.type='checkbox';
+		control.value = 1; // do not believe checkboxs have values in pdfs
+		control.id = itemProperties.id;
+		control.name = itemProperties.id;
+		control.style.padding = '0';
+		control.style.margin = '0';
+		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
+		if (itemProperties.selected)
+			control.checked='checked';
+		if (itemProperties.readOnly)
+			control.disabled='disabled';
+		return control;
+	};
 
-    function getTextControl(itemProperties, viewport) {
-        var control;
-        if (itemProperties.multiLine) {
-            control = document.createElement('textarea');
-            control.style.resize = "none";
-        }
-        else {
-            control = document.createElement('input');
-            if (itemProperties.fileUpload) {
-                control.type='file';
-            }
-            else if (itemProperties.password) {
-                control.type='password';
-            }
-            else {
-                control.type='text';
-            }
-        }
-        control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
-        control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
-        control.style.textAlign = itemProperties.textAlignment;
-        if (!itemProperties.multiLine) {
-            if (containFontSize && Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
-                control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
-            }
-            else {
-                if (containFontSize) {
-                    control.style.fontSize = itemProperties.fontSizeControl + 'px';
-                }
-                else {
-                    control.style.fontSize = itemProperties.fontSize + 'px';
-                }
-            }
-        }
-        else {
-            if (containFontSize) {
-                control.style.fontSize = itemProperties.fontSizeControl + 'px';
-            }
-            else {
-                control.style.fontSize = itemProperties.fontSize + 'px';
-            }
-        }
-        control.style.padding = '0';
-        control.style.margin = '0';
-        control.style.border = '1px solid #E6E6E6';
-        control.style.display = 'block';
-        if (itemProperties.maxlen) {
-            control.maxLength=itemProperties.maxlen;
-        }
-        if (itemProperties.readOnly) {
-            control.readOnly = true;
-            control.style.cursor = "not-allowed";
-        }
-        control.value = itemProperties.value;
-        control.id = itemProperties.id;
-        control.name = itemProperties.id;
-        return control;
-    }
+	defaultCreationRoutines[fieldTypes.RADIO_BUTTON] = function(itemProperties, viewport) {
+		var control = document.createElement('input');
+		control.type='radio';
+		control.value = itemProperties.groupingId;
+		control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
+		control.name = itemProperties.correctedId;
+		control.style.padding = '0';
+		control.style.margin = '0';
+		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
+		if (itemProperties.selected)
+			control.checked='checked';
+		if (itemProperties.readOnly)
+			control.disabled='disabled';
+		return control;
+	};
 
-    function getDropDownControl(itemProperties, viewport) {
-        var control = document.createElement('select');
-        if (itemProperties.multiSelect)
-            control.multiple=true;
-        control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
-        control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
-        control.style.textAlign = itemProperties.textAlignment;
-        control.id = itemProperties.id;
-        control.name = itemProperties.id;
-        if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
-            control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
-        }
-        else {
-            control.style.fontSize = itemProperties.fontSizeControl + 'px';
-        }
-        control.style.border = '1px solid #E6E6E6';
-        control.style.display = 'block';
-        if (itemProperties.options) {
-            for (var option in itemProperties.options) {
-                var optionElement = document.createElement('option');
-                optionElement.value = itemProperties.options[option]['value'];
-                optionElement.innerHTML = itemProperties.options[option]['text'];
-                if (typeof(itemProperties.value)=='object') { // multiple selected values. To be implemented
+	defaultCreationRoutines[fieldTypes.TEXT] = function(itemProperties, viewport) {
+		var control;
+		if (itemProperties.multiLine) {
+			control = document.createElement('textarea');
+			control.style.resize = "none";
+		}
+		else {
+			control = document.createElement('input');
+			if (itemProperties.fileUpload) {
+				control.type='file';
+			}
+			else if (itemProperties.password) {
+				control.type='password';
+			}
+			else {
+				control.type='text';
+			}
+		}
+		control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
+		control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
+		control.style.textAlign = itemProperties.textAlignment;
+		if (!itemProperties.multiLine) {
+			if (containFontSize && Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+				control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
+			}
+			else {
+				if (containFontSize) {
+					control.style.fontSize = itemProperties.fontSizeControl + 'px';
+				}
+				else {
+					control.style.fontSize = itemProperties.fontSize + 'px';
+				}
+			}
+		}
+		else {
+			if (containFontSize) {
+				control.style.fontSize = itemProperties.fontSizeControl + 'px';
+			}
+			else {
+				control.style.fontSize = itemProperties.fontSize + 'px';
+			}
+		}
+		control.style.padding = '0';
+		control.style.margin = '0';
+		control.style.border = '1px solid #E6E6E6';
+		control.style.display = 'block';
+		if (itemProperties.maxlen) {
+			control.maxLength=itemProperties.maxlen;
+		}
+		if (itemProperties.readOnly) {
+			control.readOnly = true;
+			control.style.cursor = "not-allowed";
+		}
+		control.value = itemProperties.value;
+		control.id = itemProperties.id;
+		control.name = itemProperties.id;
+		return control;
+	};
 
-                }
-                else if(itemProperties.value==itemProperties.options[option]['value']) {
-                    optionElement.selected=true;
-                }
-                control.appendChild(optionElement);
-            }
+	defaultCreationRoutines[fieldTypes.DROP_DOWN] = function(itemProperties, viewport) {
+		var control = document.createElement('select');
+		if (itemProperties.multiSelect)
+			control.multiple=true;
+		control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
+		control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
+		control.style.textAlign = itemProperties.textAlignment;
+		control.id = itemProperties.id;
+		control.name = itemProperties.id;
+		if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+			control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
+		}
+		else {
+			control.style.fontSize = itemProperties.fontSizeControl + 'px';
+		}
+		control.style.border = '1px solid #E6E6E6';
+		control.style.display = 'block';
+		if (itemProperties.options) {
+			for (var option in itemProperties.options) {
+				var optionElement = document.createElement('option');
+				optionElement.value = itemProperties.options[option]['value'];
+				optionElement.innerHTML = itemProperties.options[option]['text'];
+				if (typeof(itemProperties.value)=='object') { // multiple selected values. To be implemented
 
-        }
-        if (itemProperties.readOnly)
-        {
-            control.disabled='disabled';
-            control.style.cursor = "not-allowed";
-        }
-        return control;
-    }
+				}
+				else if(itemProperties.value==itemProperties.options[option]['value']) {
+					optionElement.selected=true;
+				}
+				control.appendChild(optionElement);
+			}
+
+		}
+		if (itemProperties.readOnly)
+		{
+			control.disabled='disabled';
+			control.style.cursor = "not-allowed";
+		}
+		return control;
+	};
 
     function itemType(item) {
         if (item.subtype=='Widget') {
@@ -495,96 +498,45 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return fieldTypes.TEXT;
     }
 
-    function renderForm(div, page, viewport, values) {
-        resetFormFields();
-        page.getAnnotations().then(function(items) {
-            items.forEach(function(item) {
-                var fieldType;
-                if ((fieldType=itemType(item))!= fieldTypes.UNSUPPORTED) {
-                    var fieldData = getFieldProperties(item, viewport, values);
-                    var container = getPositionContainer(fieldData, viewport);
-                    var control;
-                    if (typeof(idClosureOverrides[fieldData.correctedId])!='undefined') {
-                        control = idClosureOverrides[fieldData.correctedId](fieldData, viewport);
-                        if (control) {
-                            container.appendChild(control);
-                            fieldType = determineControlType(control);
-                            switch (fieldType) {
-                                case fieldTypes.TEXT:
-                                    formFields['TEXT'][control.id] = control.id;
-                                    break;
-                                case fieldTypes.CHECK_BOX:
-                                    formFields['CHECK_BOX'][control.id] = control.id;
-                                    break;
-                                case fieldTypes.RADIO_BUTTON:
-                                    formFields['RADIO_BUTTON'][control.name] = control.name;
-                                    break;
-                                case fieldTypes.DROP_DOWN:
-                                    formFields['DROP_DOWN'][control.id] = control.id;
-                                    break;
-                            }
-                        }
-                    }
-                    else {
-                        switch (fieldType) {
-                            case fieldTypes.TEXT:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getTextControl(fieldData, viewport);
-                                }
-                                if (control) {
-                                    formFields['TEXT'][control.id] = control.id;
-                                    container.appendChild(control);
-                                }
-                                break;
-                            case fieldTypes.CHECK_BOX:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getCheckBoxControl(fieldData, viewport);
-                                }
-                                if (control) {
-                                    formFields['CHECK_BOX'][control.id] = control.id;
-                                    container.appendChild(control);
-                                }
-                                break;
-                            case fieldTypes.RADIO_BUTTON:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getRadioButtonControl(fieldData, viewport);
-                                }
-                                if (control) {
-                                    formFields['RADIO_BUTTON'][control.name] = control.name;
-                                    container.appendChild(control);
-                                }
-                                break;
-                            case fieldTypes.DROP_DOWN:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getDropDownControl(fieldData, viewport);
-                                }
-                                if (control) {
-                                    formFields['DROP_DOWN'][control.id] = control.id;
-                                    container.appendChild(control);
-                                }
-                                break;
-                        }
-                    }
-                    div.appendChild(container);
-                }
-            });
-            if (postRenderHook!==false) {
-                postRenderHook();
-            }
-        });
-    }
+	function renderForm(div, page, viewport, values) {
+
+		// Remove any elements we've been holding on to
+		resetFormFields();
+		page.getAnnotations().then(function(items) {
+			items.forEach(function(item) {
+				var fieldType = itemType(item);
+				if (fieldType) {
+
+					// Can we create a control?
+					var fieldData = getFieldProperties(item, viewport, values);
+					var creationRoutine = idClosureOverrides[fieldData.correctedId] ||
+										  genericClosureOverrides[fieldType] ||
+										  defaultCreationRoutines[fieldType];
+					var control = creationRoutine ? creationRoutine(fieldData, viewport) : undefined;
+
+					// If we created a control, add it to a position container, and then the domain
+					if (control) {
+						var container = getPositionContainer(fieldData, viewport);
+						container.appendChild(control);
+						fieldType = determineControlType(control);
+						switch (fieldType) {
+							case fieldTypes.TEXT :
+							case fieldTypes.CHECK_BOX :
+							case fieldTypes.DROP_DOWN :
+								formFields[fieldType][control.id] = control.id;
+								break;
+							case fieldTypes.RADIO_BUTTON :
+								formFields[fieldType][control.name] = control.name;
+								break;
+						}
+						div.appendChild(container);
+					}
+				}
+			});
+			if (postRenderHook) postRenderHook();
+		});
+
+	}
 
     return {
 
@@ -733,22 +685,21 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             var context = canvas.getContext('2d');
             var renderContext = {
                 canvasContext: context,
-                viewport: viewport
+                viewport: viewport,
+				intent: doForm ? "display" : "print",
             };
-            page.render(renderContext);
-            //
-            // Render the form elements
-            //
-            if (doForm) {
-                var formHolder = document.createElement('div');
-                formHolder.style.position = 'absolute';
-                formHolder.style.top = '0';
-                formHolder.style.left = '0';
-                formHolder.height = viewport.height;
-                formHolder.width = viewport.width;
-                pageHolder.appendChild(formHolder);
-                renderForm(formHolder, page, viewport, values);
-            }
+			// Render the page, and optionally the forms overlay
+			page.render(renderContext);
+			if (doForm) {
+				var formHolder = document.createElement('div');
+				formHolder.style.position = 'absolute';
+				formHolder.style.top = '0';
+				formHolder.style.left = '0';
+				formHolder.height = viewport.height;
+				formHolder.width = viewport.width;
+				pageHolder.appendChild(formHolder);
+				renderForm(formHolder, page, viewport, values);
+			}
         },
 
         returnFormElementsOnPage: function(page) {
