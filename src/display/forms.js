@@ -519,7 +519,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 						fieldType = determineControlType(control);
 						switch (fieldType) {
 							case fieldTypes.RADIO_BUTTON :
-								formFields[fieldType][fieldData.correctedId] = formFields[fieldType][control.name] || [];
+								formFields[fieldType][fieldData.correctedId] = formFields[fieldType][fieldData.correctedId] || [];
 								formFields[fieldType][fieldData.correctedId].push(control);
 								break;
 							default:
