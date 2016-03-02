@@ -480,20 +480,17 @@ var FormFunctionality = (function FormFunctionalityClosure() {
     }
 
     function determineControlType(control) {
-        if (control.nodeName.toLowerCase()=='input') {
+		var nodeName = control.nodeName.toLowerCase();
+        if (nodeName=='input') {
             switch (control.type.toLowerCase()) {
-                case 'radio':
-                    return fieldTypes.RADIO_BUTTON;
-                    break;
-                case 'checkbox':
-                    return fieldTypes.CHECK_BOX;
-                    break;
+                case 'radio' : return fieldTypes.RADIO_BUTTON;
+                case 'checkbox' : return fieldTypes.CHECK_BOX;
             }
         }
-        else if (control.nodeName.toLowerCase()=='textarea') {
+        else if (nodeName=='textarea') {
             return fieldTypes.TEXT;
         }
-        else if (control.nodeName.toLowerCase()=='select') {
+        else if (nodeName=='select') {
             return fieldTypes.DROP_DOWN;
         }
         return fieldTypes.TEXT;
@@ -521,13 +518,12 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 						container.appendChild(control);
 						fieldType = determineControlType(control);
 						switch (fieldType) {
-							case fieldTypes.TEXT :
-							case fieldTypes.CHECK_BOX :
-							case fieldTypes.DROP_DOWN :
-								formFields[fieldType][control.id] = control.id;
-								break;
 							case fieldTypes.RADIO_BUTTON :
-								formFields[fieldType][control.name] = control.name;
+								formFields[fieldType][fieldData.correctedId] = formFields[fieldType][control.name] || [];
+								formFields[fieldType][fieldData.correctedId].push(control);
+								break;
+							default:
+								formFields[fieldType][fieldData.correctedId] = control;
 								break;
 						}
 						div.appendChild(container);
@@ -594,49 +590,53 @@ var FormFunctionality = (function FormFunctionalityClosure() {
          * @return {array} An array of values of the form elements in format [elementId]=value
          */
         getFormValues: function() {
-            var values = {};
-            var elementId;
-            var element;
-            for(elementId in formFields['CHECK_BOX']) {
-                element = document.getElementById(elementId);
-                if (element) {
-                    values[elementId] = element.checked ? true : false;
-                }
-            }
-            for(elementId in formFields['TEXT']) {
-                element = document.getElementById(elementId);
-                if (element) {
-                    values[elementId] = element.value;
-                }
-            }
-            for(elementId in formFields['DROP_DOWN']) {
-                element = document.getElementById(elementId);
-                if (element) {
-                    if (_isSelectMultiple(element)) {
-                        var valueObject = {};
-                        for (var i=0; i<element.length; i++) {
-                            if (element[i].selected) {
-                                valueObject[element[i].value]=element[i].value;
-                            }
-                        }
-                        values[elementId] = valueObject;
-                    }
-                    else {
-                        values[elementId] = element.options[element.selectedIndex].value;
-                    }
-                }
-            }
-            for(elementId in formFields['RADIO_BUTTON']) {
-                element = document.getElementsByName(elementId);
-                if (element.length>0) {
-                    for (var i=0; i<element.length; i++) {
-                        if (element[i].checked==true) {
-                            values[elementId]=element[i].value;
-                        }
-                    }
-                }
-            }
-            return values;
+						 
+			// Process to visit each element in a set of them
+			var values = {};
+			var visitElements = function(set, action) {
+				var elementIds = Object.keys(set);
+				elementIds.forEach(function(elementId){
+					var element = set[elementId];
+					if (element) action(elementId,element);
+				});
+			};
+			
+			// Visit each checkbox
+			visitElements(formFields[fieldTypes.CHECK_BOX],function(elementId,element) {
+				values[elementId] = element.checked ? true : false;
+			});
+
+			// Visit each text field
+			visitElements(formFields[fieldTypes.TEXT],function(elementId,element) {
+				values[elementId] = element.value;
+			});
+
+			// Visit each text drop down
+			visitElements(formFields[fieldTypes.DROP_DOWN],function(elementId,element) {
+				if (_isSelectMultiple(element)) {
+					var valueObject = {};
+					for (var i=0; i<element.length; i++) {
+						if (element[i].selected) {
+							valueObject[element[i].value] = element[i].value;
+						}
+					}
+					values[elementId] = valueObject;
+				}
+				else {
+					values[elementId] = element.options[element.selectedIndex].value;
+				}
+			});
+
+			// Visit each radio button
+			visitElements(formFields[fieldTypes.RADIO_BUTTON],function(elementId,element) {
+				element.some(function(r){
+					if (r.checked) values[elementId] = r.value;
+					return r.checked;
+				});
+			});
+
+			// Done!
+			return values;
         },
         /**
          * @param {number} width A width to render - false to not specify width
