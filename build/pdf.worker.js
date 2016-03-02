@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdfWorker = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.52';
-var pdfjsBuild = '2232fd9';
+var pdfjsVersion = '1.4.54';
+var pdfjsBuild = '5104ec5';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -40312,7 +40312,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     var dict = params.dict;
     var data = this.data;
-
+						
     data.annotationType = AnnotationType.WIDGET;
     data.fieldValue = stringToPDFString(
       Util.getInheritableProperty(dict, 'V') || '');
@@ -40409,7 +40409,11 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     switch(data.fieldType) {
       case 'Tx':
-		if (data.fieldFlags & 4194304) break; // barcode or similar, ignore
+		if (Util.getInheritableProperty(dict, 'PMD'))
+		{
+			data.paperMetaData = true;
+			break; // PaperMetaData means this is a qrcode, datamatrix or similar, ignore
+		}
         data.formElementType ='TEXT'; //text input
         break;
       case 'Btn':

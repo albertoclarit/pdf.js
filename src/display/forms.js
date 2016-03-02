@@ -26,6 +26,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
     var genericClosureOverrides = {}; // closures that render the controls. Can be used to render all DROP_DOWNS one way, for example
     var idClosureOverrides = {}; // closure that overrides any controls id (specifically the correctedId). For radio buttons, all that are part of one group will go to same closure. Grouping ID is not respected
+	var postCreationTweak = false;
 
     var formFields = {};
 
@@ -53,6 +54,20 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             throw 'Passed function must accept two arguments: itemProperties and viewport';
         }
     }
+						 
+	function assertValidControlTweak(closure) {
+		if (typeof(closure)!='function') {
+			throw "Passed item is not a function";
+		}
+		if (closure.length!=3) {
+			throw 'Passed function must accept three arguments: fieldType, elementId and element';
+		}
+		var args = closure.toString ().match (/^\s*function\s+(?:\w*\s*)?\((.*?)\)/);
+		args = args ? (args[1] ? args[1].trim ().split (/\s*,\s*/) : []) : null;
+		if (args[0]!='fieldType' || args[1]!='elementId' || args[2]!='element') {
+			throw 'Passed function must accept three arguments: fieldType, elementId and element';
+		}
+	}
 
     function _isSelectMultiple(element) {
         for (var i=0, l = element.attributes.length; i<l; i++) {
@@ -448,7 +463,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         if (item.subtype=='Widget') {
             switch(item.fieldType) {
                 case 'Tx':
-					if (item.fieldFlags & 4194304) break; // barcode or similar
+					if (item.paperMetaData) break; // PaperMetaData means a qrcode, datamatrix or similar... ignored
                     return fieldTypes.TEXT; //text input
                     break;
                 case 'Btn':
@@ -501,6 +516,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		// Remove any elements we've been holding on to
 		resetFormFields();
 		page.getAnnotations().then(function(items) {
+								   console.log(items);
 			items.forEach(function(item) {
 				var fieldType = itemType(item);
 				if (fieldType) {
@@ -514,6 +530,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 					// If we created a control, add it to a position container, and then the domain
 					if (control) {
+						
+						// Do we want to perform any tweaks?
+						if (postCreationTweak) postCreationTweak(fieldType,fieldData.correctedId,control);
+						  
 						var container = getPositionContainer(fieldData, viewport);
 						container.appendChild(control);
 						fieldType = determineControlType(control);
@@ -585,6 +605,15 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                 idClosureOverrides[id]=closure;
             }
         },
+						 
+		/**
+		 * Provide a function that will be given a chance to tweak a control after it is created (custom css, angular controls etc could be added here)
+		 * @param {function} postCallback A function with parameters 'filedType', 'elementId' and 'element' that will have chance to customize the field and return nothing
+		 */
+		setPostCreationTweak: function(postCallback) {
+			if (postCallback) assertValidControlTweak(postCallback);
+			postCreationTweak = postCallback;
+		},
 
         /**
          * @return {array} An array of values of the form elements in format [elementId]=value

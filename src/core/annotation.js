@@ -561,7 +561,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     var dict = params.dict;
     var data = this.data;
-
+						
     data.annotationType = AnnotationType.WIDGET;
     data.fieldValue = stringToPDFString(
       Util.getInheritableProperty(dict, 'V') || '');
@@ -658,7 +658,11 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     switch(data.fieldType) {
       case 'Tx':
-		if (data.fieldFlags & 4194304) break; // barcode or similar, ignore
+		if (Util.getInheritableProperty(dict, 'PMD'))
+		{
+			data.paperMetaData = true;
+			break; // PaperMetaData means this is a qrcode, datamatrix or similar, ignore
+		}
         data.formElementType ='TEXT'; //text input
         break;
       case 'Btn':
