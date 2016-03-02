@@ -516,7 +516,6 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		// Remove any elements we've been holding on to
 		resetFormFields();
 		page.getAnnotations().then(function(items) {
-								   console.log(items);
 			items.forEach(function(item) {
 				var fieldType = itemType(item);
 				if (fieldType) {

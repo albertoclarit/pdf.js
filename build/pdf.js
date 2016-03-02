@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdf = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.54';
-var pdfjsBuild = '5104ec5';
+var pdfjsVersion = '1.4.55';
+var pdfjsBuild = '4939420';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -4195,7 +4195,6 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		// Remove any elements we've been holding on to
 		resetFormFields();
 		page.getAnnotations().then(function(items) {
-								   console.log(items);
 			items.forEach(function(item) {
 				var fieldType = itemType(item);
 				if (fieldType) {
