@@ -332,8 +332,6 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		var control = document.createElement('input');
 		control.type='checkbox';
 		control.value = 1; // do not believe checkboxs have values in pdfs
-		control.id = itemProperties.id;
-		control.name = itemProperties.id;
 		control.style.padding = '0';
 		control.style.margin = '0';
 		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
@@ -347,9 +345,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 	defaultCreationRoutines[fieldTypes.RADIO_BUTTON] = function(itemProperties, viewport) {
 		var control = document.createElement('input');
 		control.type='radio';
-		control.value = itemProperties.groupingId;
-		control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
-		control.name = itemProperties.correctedId;
+		control.value = itemProperties.groupingId;		// Value is in index (matches PDF)
+		control.name = itemProperties.correctedId;		// Name is used to group radio buttons
 		control.style.padding = '0';
 		control.style.margin = '0';
 		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
@@ -414,8 +411,6 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 			control.style.cursor = "not-allowed";
 		}
 		control.value = itemProperties.value;
-		control.id = itemProperties.id;
-		control.name = itemProperties.id;
 		return control;
 	};
 
@@ -426,8 +421,6 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
 		control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
 		control.style.textAlign = itemProperties.textAlignment;
-		control.id = itemProperties.id;
-		control.name = itemProperties.id;
 		if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
 			control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
 		}
@@ -696,6 +689,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             var pageHolder = document.createElement('div');
             pageHolder.style.width = viewport.width + 'px';
             pageHolder.style.height = viewport.height + 'px';
+			if (postCreationTweak) postCreationTweak("PAGE","page",pageHolder);
             target.appendChild(pageHolder);
             target.style.position = 'relative';
             //
@@ -708,6 +702,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             pageHolder.appendChild(canvas);
             canvas.height = viewport.height;
             canvas.width = viewport.width;
+			if (postCreationTweak) postCreationTweak("CANVAS","canvas",canvas);
             //
             // Render PDF page into canvas context
             //
@@ -720,12 +715,13 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 			// Render the page, and optionally the forms overlay
 			page.render(renderContext);
 			if (doForm) {
-				var formHolder = document.createElement('div');
+				var formHolder = document.createElement('form');
 				formHolder.style.position = 'absolute';
 				formHolder.style.top = '0';
 				formHolder.style.left = '0';
 				formHolder.height = viewport.height;
 				formHolder.width = viewport.width;
+				if (postCreationTweak) postCreationTweak("FORM","form",formHolder);
 				pageHolder.appendChild(formHolder);
 				renderForm(formHolder, page, viewport, values);
 			}
