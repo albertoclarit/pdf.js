@@ -26,6 +26,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
     var genericClosureOverrides = {}; // closures that render the controls. Can be used to render all DROP_DOWNS one way, for example
     var idClosureOverrides = {}; // closure that overrides any controls id (specifically the correctedId). For radio buttons, all that are part of one group will go to same closure. Grouping ID is not respected
+	var postCreationTweak = false;
 
     var formFields = {};
 
@@ -53,6 +54,20 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             throw 'Passed function must accept two arguments: itemProperties and viewport';
         }
     }
+						 
+	function assertValidControlTweak(closure) {
+		if (typeof(closure)!='function') {
+			throw "Passed item is not a function";
+		}
+		if (closure.length!=3) {
+			throw 'Passed function must accept three arguments: fieldType, elementId and element';
+		}
+		var args = closure.toString ().match (/^\s*function\s+(?:\w*\s*)?\((.*?)\)/);
+		args = args ? (args[1] ? args[1].trim ().split (/\s*,\s*/) : []) : null;
+		if (args[0]!='fieldType' || args[1]!='elementId' || args[2]!='element') {
+			throw 'Passed function must accept three arguments: fieldType, elementId and element';
+		}
+	}
 
     function _isSelectMultiple(element) {
         for (var i=0, l = element.attributes.length; i<l; i++) {
@@ -211,7 +226,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             }
         }
         return {
-            selected: selected
+            selected: selected,
+            readOnly: item.readOnly,
         };
     }
 
@@ -230,7 +246,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             }
         }
         return {
-            selected: selected
+            selected: selected,
+            readOnly: item.readOnly,
         };
     }
 
@@ -245,7 +262,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             password: item.password,
             fileUpload: item.fileUpload,
             richText: item.richText,
-            maxlen: item.maxlen
+            readOnly: item.readOnly,
+            maxlen: item.maxlen,
         };
     }
 
@@ -258,7 +276,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             value: value,
             options: item.options,
             multiSelect: item.multiSelect,
-            allowTextEntry: item.allowTextEntry
+            allowTextEntry: item.allowTextEntry,
+            readOnly: item.readOnly,
         };
     }
 
@@ -306,127 +325,138 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return containerDiv;
     }
 
-    function getCheckBoxControl(itemProperties, viewport) {
-        var control = document.createElement('input');
-        control.type='checkbox';
-        control.value = 1; // do not believe checkboxs have values in pdfs
-        control.id = itemProperties.id;
-        control.name = itemProperties.id;
-        control.style.padding = '0';
-        control.style.margin = '0';
-        control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
-        if (itemProperties.selected)
-            control.checked='checked';
-        return control;
-    }
+	// These are the default creation routines for form components (unless overrides are provided by id or type)
+	var defaultCreationRoutines = {};
 
-    function getRadioButtonControl(itemProperties, viewport) {
-        var control = document.createElement('input');
-        control.type='radio';
-        control.value = itemProperties.groupingId;
-        control.id = itemProperties.correctedId+'.'+itemProperties.groupingId;
-        control.name = itemProperties.correctedId;
-        control.style.padding = '0';
-        control.style.margin = '0';
-        control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
-        if (itemProperties.selected)
-            control.checked='checked';
-        return control;
-    }
+	defaultCreationRoutines[fieldTypes.CHECK_BOX] = function(itemProperties, viewport) {
+		var control = document.createElement('input');
+		control.type='checkbox';
+		control.value = 1; // do not believe checkboxs have values in pdfs
+		control.style.padding = '0';
+		control.style.margin = '0';
+		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
+		if (itemProperties.selected)
+			control.checked='checked';
+		if (itemProperties.readOnly)
+			control.disabled='disabled';
+		return control;
+	};
 
-    function getTextControl(itemProperties, viewport) {
-        var control;
-        if (itemProperties.multiLine) {
-            control = document.createElement('textarea');
-        }
-        else {
-            control = document.createElement('input');
-            if (itemProperties.fileUpload) {
-                control.type='file';
-            }
-            else if (itemProperties.password) {
-                control.type='password';
-            }
-            else {
-                control.type='text';
-            }
-        }
-        control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
-        control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
-        control.style.textAlign = itemProperties.textAlignment;
-        if (!itemProperties.multiLine) {
-            if (containFontSize && Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
-                control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
-            }
-            else {
-                if (containFontSize) {
-                    control.style.fontSize = itemProperties.fontSizeControl + 'px';
-                }
-                else {
-                    control.style.fontSize = itemProperties.fontSize + 'px';
-                }
-            }
-        }
-        else {
-            if (containFontSize) {
-                control.style.fontSize = itemProperties.fontSizeControl + 'px';
-            }
-            else {
-                control.style.fontSize = itemProperties.fontSize + 'px';
-            }
-        }
-        control.style.padding = '0';
-        control.style.margin = '0';
-        control.style.border = '1px solid #E6E6E6';
-        control.style.display = 'block';
-        if (itemProperties.maxlen) {
-            control.maxLength=itemProperties.maxlen;
-        }
-        control.value = itemProperties.value;
-        control.id = itemProperties.id;
-        control.name = itemProperties.id;
-        return control;
-    }
+	defaultCreationRoutines[fieldTypes.RADIO_BUTTON] = function(itemProperties, viewport) {
+		var control = document.createElement('input');
+		control.type='radio';
+		control.value = itemProperties.groupingId;		// Value is in index (matches PDF)
+		control.name = itemProperties.correctedId;		// Name is used to group radio buttons
+		control.style.padding = '0';
+		control.style.margin = '0';
+		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
+		if (itemProperties.selected)
+			control.checked='checked';
+		if (itemProperties.readOnly)
+			control.disabled='disabled';
+		return control;
+	};
 
-    function getDropDownControl(itemProperties, viewport) {
-        var control = document.createElement('select');
-        if (itemProperties.multiSelect)
-            control.multiple=true;
-        control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
-        control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
-        control.style.textAlign = itemProperties.textAlignment;
-        control.id = itemProperties.id;
-        control.name = itemProperties.id;
-        if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
-            control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
-        }
-        else {
-            control.style.fontSize = itemProperties.fontSizeControl + 'px';
-        }
-        control.style.border = '1px solid #E6E6E6';
-        control.style.display = 'block';
-        if (itemProperties.options) {
-            for (var option in itemProperties.options) {
-                var optionElement = document.createElement('option');
-                optionElement.value = itemProperties.options[option]['value'];
-                optionElement.innerHTML = itemProperties.options[option]['text'];
-                if (typeof(itemProperties.value)=='object') { // multiple selected values. To be implemented
+	defaultCreationRoutines[fieldTypes.TEXT] = function(itemProperties, viewport) {
+		var control;
+		if (itemProperties.multiLine) {
+			control = document.createElement('textarea');
+			control.style.resize = "none";
+		}
+		else {
+			control = document.createElement('input');
+			if (itemProperties.fileUpload) {
+				control.type='file';
+			}
+			else if (itemProperties.password) {
+				control.type='password';
+			}
+			else {
+				control.type='text';
+			}
+		}
+		control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
+		control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
+		control.style.textAlign = itemProperties.textAlignment;
+		if (!itemProperties.multiLine) {
+			if (containFontSize && Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+				control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
+			}
+			else {
+				if (containFontSize) {
+					control.style.fontSize = itemProperties.fontSizeControl + 'px';
+				}
+				else {
+					control.style.fontSize = itemProperties.fontSize + 'px';
+				}
+			}
+		}
+		else {
+			if (containFontSize) {
+				control.style.fontSize = itemProperties.fontSizeControl + 'px';
+			}
+			else {
+				control.style.fontSize = itemProperties.fontSize + 'px';
+			}
+		}
+		control.style.padding = '0';
+		control.style.margin = '0';
+		control.style.border = '1px solid #E6E6E6';
+		control.style.display = 'block';
+		if (itemProperties.maxlen) {
+			control.maxLength=itemProperties.maxlen;
+		}
+		if (itemProperties.readOnly) {
+			control.readOnly = true;
+			control.style.cursor = "not-allowed";
+		}
+		control.value = itemProperties.value;
+		return control;
+	};
 
-                }
-                else if(itemProperties.value==itemProperties.options[option]['value']) {
-                    optionElement.selected=true;
-                }
-                control.appendChild(optionElement);
-            }
+	defaultCreationRoutines[fieldTypes.DROP_DOWN] = function(itemProperties, viewport) {
+		var control = document.createElement('select');
+		if (itemProperties.multiSelect)
+			control.multiple=true;
+		control.style.width = Math.floor(itemProperties.width-3) + 'px'; // small amount + borders
+		control.style.height = Math.floor(itemProperties.height) + 'px'; // small amount + borders
+		control.style.textAlign = itemProperties.textAlignment;
+		if (Math.floor(itemProperties.fontSizeControl)>=Math.floor(itemProperties.height-2)) {
+			control.style.fontSize = Math.floor(itemProperties.height-3) + 'px';
+		}
+		else {
+			control.style.fontSize = itemProperties.fontSizeControl + 'px';
+		}
+		control.style.border = '1px solid #E6E6E6';
+		control.style.display = 'block';
+		if (itemProperties.options) {
+			for (var option in itemProperties.options) {
+				var optionElement = document.createElement('option');
+				optionElement.value = itemProperties.options[option]['value'];
+				optionElement.innerHTML = itemProperties.options[option]['text'];
+				if (typeof(itemProperties.value)=='object') { // multiple selected values. To be implemented
 
-        }
-        return control;
-    }
+				}
+				else if(itemProperties.value==itemProperties.options[option]['value']) {
+					optionElement.selected=true;
+				}
+				control.appendChild(optionElement);
+			}
+
+		}
+		if (itemProperties.readOnly)
+		{
+			control.disabled='disabled';
+			control.style.cursor = "not-allowed";
+		}
+		return control;
+	};
 
     function itemType(item) {
         if (item.subtype=='Widget') {
             switch(item.fieldType) {
                 case 'Tx':
+					if (item.paperMetaData) break; // PaperMetaData means a qrcode, datamatrix or similar... ignored
                     return fieldTypes.TEXT; //text input
                     break;
                 case 'Btn':
@@ -458,105 +488,64 @@ var FormFunctionality = (function FormFunctionalityClosure() {
     }
 
     function determineControlType(control) {
-        if (control.nodeName.toLowerCase()=='input') {
+		var nodeName = control.nodeName.toLowerCase();
+        if (nodeName=='input') {
             switch (control.type.toLowerCase()) {
-                case 'radio':
-                    return fieldTypes.RADIO_BUTTON;
-                    break;
-                case 'checkbox':
-                    return fieldTypes.CHECK_BOX;
-                    break;
+                case 'radio' : return fieldTypes.RADIO_BUTTON;
+                case 'checkbox' : return fieldTypes.CHECK_BOX;
             }
         }
-        else if (control.nodeName.toLowerCase()=='textarea') {
+        else if (nodeName=='textarea') {
             return fieldTypes.TEXT;
         }
-        else if (control.nodeName.toLowerCase()=='select') {
+        else if (nodeName=='select') {
             return fieldTypes.DROP_DOWN;
         }
         return fieldTypes.TEXT;
     }
 
-    function renderForm(div, page, viewport, values) {
-        resetFormFields();
-        page.getAnnotations().then(function(items) {
-            items.forEach(function(item) {
-                var fieldType;
-                if ((fieldType=itemType(item))!= fieldTypes.UNSUPPORTED) {
-                    var fieldData = getFieldProperties(item, viewport, values);
-                    var container = getPositionContainer(fieldData, viewport);
-                    var control;
-                    if (typeof(idClosureOverrides[fieldData.correctedId])!='undefined') {
-                        control = idClosureOverrides[fieldData.correctedId](fieldData, viewport);
-                        container.appendChild(control);
-                        fieldType = determineControlType(control);
-                        switch (fieldType) {
-                            case fieldTypes.TEXT:
-                                formFields['TEXT'][control.id] = control.id;
-                                break;
-                            case fieldTypes.CHECK_BOX:
-                                formFields['CHECK_BOX'][control.id] = control.id;
-                                break;
-                            case fieldTypes.RADIO_BUTTON:
-                                formFields['RADIO_BUTTON'][control.name] = control.name;
-                                break;
-                            case fieldTypes.DROP_DOWN:
-                                formFields['DROP_DOWN'][control.id] = control.id;
-                                break;
-                        }
-                    }
-                    else {
-                        switch (fieldType) {
-                            case fieldTypes.TEXT:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getTextControl(fieldData, viewport);
-                                }
-                                formFields['TEXT'][control.id] = control.id;
-                                container.appendChild(control);
-                                break;
-                            case fieldTypes.CHECK_BOX:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getCheckBoxControl(fieldData, viewport);
-                                }
-                                formFields['CHECK_BOX'][control.id] = control.id;
-                                container.appendChild(control);
-                                break;
-                            case fieldTypes.RADIO_BUTTON:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getRadioButtonControl(fieldData, viewport);
-                                }
-                                formFields['RADIO_BUTTON'][control.name] = control.name;
-                                container.appendChild(control);
-                                break;
-                            case fieldTypes.DROP_DOWN:
-                                if (typeof(genericClosureOverrides[fieldType])!='undefined') {
-                                    control = genericClosureOverrides[fieldType](fieldData, viewport);
-                                }
-                                else {
-                                    control = getDropDownControl(fieldData, viewport);
-                                }
-                                formFields['DROP_DOWN'][control.id] = control.id;
-                                container.appendChild(control);
-                                break;
-                        }
-                    }
-                    div.appendChild(container);
-                }
-            });
-            if (postRenderHook!==false) {
-                postRenderHook();
-            }
-        });
-    }
+	function renderForm(div, page, viewport, values) {
+
+		// Remove any elements we've been holding on to
+		resetFormFields();
+		page.getAnnotations().then(function(items) {
+			items.forEach(function(item) {
+				var fieldType = itemType(item);
+				if (fieldType) {
+
+					// Can we create a control?
+					var fieldData = getFieldProperties(item, viewport, values);
+					var creationRoutine = idClosureOverrides[fieldData.correctedId] ||
+										  genericClosureOverrides[fieldType] ||
+										  defaultCreationRoutines[fieldType];
+					var control = creationRoutine ? creationRoutine(fieldData, viewport) : undefined;
+
+					// If we created a control, add it to a position container, and then the domain
+					if (control) {
+						
+						// Do we want to perform any tweaks?
+						if (postCreationTweak) postCreationTweak(fieldType,fieldData.correctedId,control);
+						  
+						var container = getPositionContainer(fieldData, viewport);
+						container.appendChild(control);
+						fieldType = determineControlType(control);
+						switch (fieldType) {
+							case fieldTypes.RADIO_BUTTON :
+								formFields[fieldType][fieldData.correctedId] = formFields[fieldType][fieldData.correctedId] || [];
+								formFields[fieldType][fieldData.correctedId].push(control);
+								break;
+							default:
+								formFields[fieldType][fieldData.correctedId] = control;
+								break;
+						}
+						div.appendChild(container);
+					}
+				}
+			});
+			if (postRenderHook) postRenderHook();
+		});
+
+	}
 
     return {
 
@@ -608,54 +597,67 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                 idClosureOverrides[id]=closure;
             }
         },
+						 
+		/**
+		 * Provide a function that will be given a chance to tweak a control after it is created (custom css, angular controls etc could be added here)
+		 * @param {function} postCallback A function with parameters 'filedType', 'elementId' and 'element' that will have chance to customize the field and return nothing
+		 */
+		setPostCreationTweak: function(postCallback) {
+			if (postCallback) assertValidControlTweak(postCallback);
+			postCreationTweak = postCallback;
+		},
 
         /**
          * @return {array} An array of values of the form elements in format [elementId]=value
          */
         getFormValues: function() {
-            var values = {};
-            var elementId;
-            var element;
-            for(elementId in formFields['CHECK_BOX']) {
-                element = document.getElementById(elementId);
-                if (element) {
-                    values[elementId] = element.checked ? true : false;
-                }
-            }
-            for(elementId in formFields['TEXT']) {
-                element = document.getElementById(elementId);
-                if (element) {
-                    values[elementId] = element.value;
-                }
-            }
-            for(elementId in formFields['DROP_DOWN']) {
-                element = document.getElementById(elementId);
-                if (element) {
-                    if (_isSelectMultiple(element)) {
-                        var valueObject = {};
-                        for (var i=0; i<element.length; i++) {
-                            if (element[i].selected) {
-                                valueObject[element[i].value]=element[i].value;
-                            }
-                        }
-                        values[elementId] = valueObject;
-                    }
-                    else {
-                        values[elementId] = element.options[element.selectedIndex].value;
-                    }
-                }
-            }
-            for(elementId in formFields['RADIO_BUTTON']) {
-                element = document.getElementsByName(elementId);
-                if (element.length>0) {
-                    for (var i=0; i<element.length; i++) {
-                        if (element[i].checked==true) {
-                            values[elementId]=element[i].value;
-                        }
-                    }
-                }
-            }
-            return values;
+						 
+			// Process to visit each element in a set of them
+			var values = {};
+			var visitElements = function(set, action) {
+				var elementIds = Object.keys(set);
+				elementIds.forEach(function(elementId){
+					var element = set[elementId];
+					if (element) action(elementId,element);
+				});
+			};
+			
+			// Visit each checkbox
+			visitElements(formFields[fieldTypes.CHECK_BOX],function(elementId,element) {
+				values[elementId] = element.checked ? true : false;
+			});
+
+			// Visit each text field
+			visitElements(formFields[fieldTypes.TEXT],function(elementId,element) {
+				values[elementId] = element.value;
+			});
+
+			// Visit each text drop down
+			visitElements(formFields[fieldTypes.DROP_DOWN],function(elementId,element) {
+				if (_isSelectMultiple(element)) {
+					var valueObject = {};
+					for (var i=0; i<element.length; i++) {
+						if (element[i].selected) {
+							valueObject[element[i].value] = element[i].value;
+						}
+					}
+					values[elementId] = valueObject;
+				}
+				else {
+					values[elementId] = element.options[element.selectedIndex].value;
+				}
+			});
+
+			// Visit each radio button
+			visitElements(formFields[fieldTypes.RADIO_BUTTON],function(elementId,element) {
+				element.some(function(r){
+					if (r.checked) values[elementId] = r.value;
+					return r.checked;
+				});
+			});
+
+			// Done!
+			return values;
         },
         /**
          * @param {number} width A width to render - false to not specify width
@@ -687,6 +689,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             var pageHolder = document.createElement('div');
             pageHolder.style.width = viewport.width + 'px';
             pageHolder.style.height = viewport.height + 'px';
+			if (postCreationTweak) postCreationTweak("PAGE","page",pageHolder);
             target.appendChild(pageHolder);
             target.style.position = 'relative';
             //
@@ -699,28 +702,29 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             pageHolder.appendChild(canvas);
             canvas.height = viewport.height;
             canvas.width = viewport.width;
+			if (postCreationTweak) postCreationTweak("CANVAS","canvas",canvas);
             //
             // Render PDF page into canvas context
             //
             var context = canvas.getContext('2d');
             var renderContext = {
                 canvasContext: context,
-                viewport: viewport
+                viewport: viewport,
+				intent: doForm ? "display" : "print",
             };
-            page.render(renderContext);
-            //
-            // Render the form elements
-            //
-            if (doForm) {
-                var formHolder = document.createElement('div');
-                formHolder.style.position = 'absolute';
-                formHolder.style.top = '0';
-                formHolder.style.left = '0';
-                formHolder.height = viewport.height;
-                formHolder.width = viewport.width;
-                pageHolder.appendChild(formHolder);
-                renderForm(formHolder, page, viewport, values);
-            }
+			// Render the page, and optionally the forms overlay
+			page.render(renderContext);
+			if (doForm) {
+				var formHolder = document.createElement('form');
+				formHolder.style.position = 'absolute';
+				formHolder.style.top = '0';
+				formHolder.style.left = '0';
+				formHolder.height = viewport.height;
+				formHolder.width = viewport.width;
+				if (postCreationTweak) postCreationTweak("FORM","form",formHolder);
+				pageHolder.appendChild(formHolder);
+				renderForm(formHolder, page, viewport, values);
+			}
         },
 
         returnFormElementsOnPage: function(page) {

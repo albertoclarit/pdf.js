@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdfWorker = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.43';
-var pdfjsBuild = '621bf82';
+var pdfjsVersion = '1.4.56';
+var pdfjsBuild = '7819d23';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -21949,23 +21949,22 @@ var Parser = (function ParserClosure() {
             break;
           }
           found = false;
-          for (i = 0, j = 0; i < scanLength; i++) {
-            var b = scanBytes[i];
-            if (b !== ENDSTREAM_SIGNATURE[j]) {
-              i -= j;
-              j = 0;
-            } else {
+          i = 0;
+          while (i < scanLength) {
+            j = 0;
+            while (j < ENDSTREAM_SIGNATURE_LENGTH &&
+                   scanBytes[i + j] === ENDSTREAM_SIGNATURE[j]) {
               j++;
-              if (j >= ENDSTREAM_SIGNATURE_LENGTH) {
-                i++;
-                found = true;
-                break;
-              }
             }
+            if (j >= ENDSTREAM_SIGNATURE_LENGTH) {
+              found = true;
+              break;
+            }
+            i++;
           }
           if (found) {
-            skipped += i - ENDSTREAM_SIGNATURE_LENGTH;
-            stream.pos += i - ENDSTREAM_SIGNATURE_LENGTH;
+            skipped += i;
+            stream.pos += i;
             break;
           }
           skipped += scanLength;
@@ -39939,6 +39938,7 @@ var Annotation = (function AnnotationClosure() {
      * @return {boolean}
      */
     get viewable() {
+      if (this.data.hiddenForForms) return false;
       if (this.flags) {
         return !this.hasFlag(AnnotationFlag.INVISIBLE) &&
                !this.hasFlag(AnnotationFlag.HIDDEN) &&
@@ -40312,7 +40312,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     var dict = params.dict;
     var data = this.data;
-
+						
     data.annotationType = AnnotationType.WIDGET;
     data.fieldValue = stringToPDFString(
       Util.getInheritableProperty(dict, 'V') || '');
@@ -40366,8 +40366,10 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
       catch(e) {
         data.options=false;
       }
-      document(dict.get('Parent'),3,'`parent',false);
-      document(dict,5,'`current',false);
+
+      // TODO! The following lines break documents containing dropdowns and selects
+      // TODO! Investigate why these are here: document(dict.get('Parent'),3,'`parent',false);
+      // TODO! Investigate why these are here: document(dict,5,'`current',false);
     }
 
     function radioProperties () {
@@ -40387,7 +40389,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
         data.maxlen = stringToPDFString(Util.getInheritableProperty(dict,'MaxLen') || '');
     }
 
-    var regularExp = /\/([\w]+) ([\d]+) Tf/;
+    var regularExp = /\/([\w]+) ([\d]+(\.[\d]+)?) Tf/;
     var fontResults;
     if (fontResults = regularExp.exec(data.defaultAppearance)) {
         if (fontResults[2]>0) {
@@ -40407,6 +40409,11 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 
     switch(data.fieldType) {
       case 'Tx':
+		if (Util.getInheritableProperty(dict, 'PMD'))
+		{
+			data.paperMetaData = true;
+			break; // PaperMetaData means this is a qrcode, datamatrix or similar, ignore
+		}
         data.formElementType ='TEXT'; //text input
         break;
       case 'Btn':
@@ -40425,25 +40432,23 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
         break;
     }
 
-    if (data.formElementType=='TEXT'||data.formElementType=='RADIO_BUTTON'||data.formElementType=='PUSH_BUTTON'||data.formElementType=='CHECK_BOX'||data.formElementType=='DROP_DOWN') {
-      switch(data.formElementType) {
-        case 'CHECK_BOX':
-          checkProperties();
-          break;
-        case 'RADIO_BUTTON':
-          radioProperties();
-          break;
-        case 'DROP_DOWN':
-          choiceProperties();
-          break;
-        case 'TEXT':
-          textProperties();
-          break;
-      }
-    }
+	switch(data.formElementType) {
+		case 'CHECK_BOX':
+			checkProperties();
+			break;
+		case 'RADIO_BUTTON':
+			radioProperties();
+			break;
+		case 'DROP_DOWN':
+			choiceProperties();
+			break;
+		case 'TEXT':
+			textProperties();
+			break;
+	}
 
-    if (typeof(this.data.formElementType)!=='undefined') {
-      this.setFlags(AnnotationFlag.HIDDEN);  // Form field we handle. Do not allow them to be rendered as pictures!
+    if (typeof(this.data.formElementType)!=='undefined' && !this.hasFlag(AnnotationFlag.HIDDEN)) {
+		data.hiddenForForms = true;		// Hidden by the forms rendering, but shown for a "print" intent
     }
     // END IAG CODE
 //#endif
