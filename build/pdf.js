@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdf = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.56';
-var pdfjsBuild = '7819d23';
+var pdfjsVersion = '1.4.166';
+var pdfjsBuild = 'e4df052';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -94,7 +94,7 @@ var CustomStyle = (function CustomStyleClosure() {
   // in some versions of IE9 it is critical that ms appear in this list
   // before Moz
   var prefixes = ['ms', 'Moz', 'Webkit', 'O'];
-  var _cache = {};
+  var _cache = Object.create(null);
 
   function CustomStyle() {}
 
@@ -369,9 +369,9 @@ function warn(msg) {
   }
 }
 
-// Deprecated API function -- treated as warnings.
+// Deprecated API function -- display regardless of the PDFJS.verbosity setting.
 function deprecated(details) {
-  warn('Deprecated API usage: ' + details);
+  console.log('Deprecated API usage: ' + details);
 }
 
 // Fatal errors that should trigger the fallback UI and halt execution by
@@ -407,6 +407,17 @@ var UNSUPPORTED_FEATURES = PDFJS.UNSUPPORTED_FEATURES = {
   font: 'font'
 };
 
+// Gets the file name from a given URL.
+function getFilenameFromUrl(url) {
+  var anchor = url.indexOf('#');
+  var query = url.indexOf('?');
+  var end = Math.min(
+    anchor > 0 ? anchor : url.length,
+    query > 0 ? query : url.length);
+  return url.substring(url.lastIndexOf('/', end) + 1, end);
+}
+PDFJS.getFilenameFromUrl = getFilenameFromUrl;
+
 // Combines two URLs. The baseUrl shall be absolute URL. If the url is an
 // absolute URL, it will be returned as is.
 function combineUrl(baseUrl, url) {
@@ -414,6 +425,21 @@ function combineUrl(baseUrl, url) {
     return baseUrl;
   }
   return new URL(url, baseUrl).href;
+}
+
+// Checks if URLs have the same origin. For non-HTTP based URLs, returns false.
+function isSameOrigin(baseUrl, otherUrl) {
+  try {
+    var base = new URL(baseUrl);
+    if (!base.origin || base.origin === 'null') {
+      return false; // non-HTTP url
+    }
+  } catch (e) {
+    return false;
+  }
+
+  var other = new URL(otherUrl, base);
+  return base.origin === other.origin;
 }
 
 // Validates if URL is safe and allowed, e.g. to avoid XSS.
@@ -469,6 +495,18 @@ function shadow(obj, prop, value) {
   return value;
 }
 PDFJS.shadow = shadow;
+
+function getLookupTableFactory(initializer) {
+  var lookup;
+  return function () {
+    if (initializer) {
+      lookup = Object.create(null);
+      initializer(lookup);
+      initializer = null;
+    }
+    return lookup;
+  };
+}
 
 var LinkTarget = PDFJS.LinkTarget = {
   NONE: 0, // Default value.
@@ -661,6 +699,55 @@ function stringToBytes(str) {
     bytes[i] = str.charCodeAt(i) & 0xFF;
   }
   return bytes;
+}
+
+/**
+ * Gets length of the array (Array, Uint8Array, or string) in bytes.
+ * @param {Array|Uint8Array|string} arr
+ * @returns {number}
+ */
+function arrayByteLength(arr) {
+  if (arr.length !== undefined) {
+    return arr.length;
+  }
+  assert(arr.byteLength !== undefined);
+  return arr.byteLength;
+}
+
+/**
+ * Combines array items (arrays) into single Uint8Array object.
+ * @param {Array} arr - the array of the arrays (Array, Uint8Array, or string).
+ * @returns {Uint8Array}
+ */
+function arraysToBytes(arr) {
+  // Shortcut: if first and only item is Uint8Array, return it.
+  if (arr.length === 1 && (arr[0] instanceof Uint8Array)) {
+    return arr[0];
+  }
+  var resultLength = 0;
+  var i, ii = arr.length;
+  var item, itemLength ;
+  for (i = 0; i < ii; i++) {
+    item = arr[i];
+    itemLength = arrayByteLength(item);
+    resultLength += itemLength;
+  }
+  var pos = 0;
+  var data = new Uint8Array(resultLength);
+  for (i = 0; i < ii; i++) {
+    item = arr[i];
+    if (!(item instanceof Uint8Array)) {
+      if (typeof item === 'string') {
+        item = stringToBytes(item);
+      } else {
+        item = new Uint8Array(item);
+      }
+    }
+    itemLength = item.byteLength;
+    data.set(item, pos);
+    pos += itemLength;
+  }
+  return data;
 }
 
 function string32(value) {
@@ -1577,7 +1664,7 @@ var StatTimer = (function StatTimerClosure() {
     return str;
   }
   function StatTimer() {
-    this.started = {};
+    this.started = Object.create(null);
     this.times = [];
     this.enabled = true;
   }
@@ -1671,8 +1758,8 @@ function MessageHandler(sourceName, targetName, comObj) {
   this.comObj = comObj;
   this.callbackIndex = 1;
   this.postMessageTransfers = true;
-  var callbacksCapabilities = this.callbacksCapabilities = {};
-  var ah = this.actionHandler = {};
+  var callbacksCapabilities = this.callbacksCapabilities = Object.create(null);
+  var ah = this.actionHandler = Object.create(null);
 
   this._onComObjOnMessage = function messageHandlerComObjOnMessage(event) {
     var data = event.data;
@@ -1820,13 +1907,15 @@ function loadJpegStream(id, imageUrl, objs) {
 
   // feature detect for URL constructor
   var hasWorkingUrl = false;
-  if (typeof URL === 'function' && ('origin' in URL.prototype)) {
-    try {
+  try {
+    if (typeof URL === 'function' &&
+        typeof URL.prototype === 'object' &&
+        ('origin' in URL.prototype)) {
       var u = new URL('b', 'http://a');
       u.pathname = 'c%20d';
       hasWorkingUrl = u.href === 'http://a/c%20d';
-    } catch(e) {}
-  }
+    }
+  } catch(e) { }
 
   if (hasWorkingUrl)
     return;
@@ -2455,12 +2544,16 @@ exports.UnexpectedResponseException = UnexpectedResponseException;
 exports.UnknownErrorException = UnknownErrorException;
 exports.Util = Util;
 exports.XRefParseException = XRefParseException;
+exports.arrayByteLength = arrayByteLength;
+exports.arraysToBytes = arraysToBytes;
 exports.assert = assert;
 exports.bytesToString = bytesToString;
 exports.combineUrl = combineUrl;
 exports.createPromiseCapability = createPromiseCapability;
 exports.deprecated = deprecated;
 exports.error = error;
+exports.getFilenameFromUrl = getFilenameFromUrl;
+exports.getLookupTableFactory = getLookupTableFactory;
 exports.info = info;
 exports.isArray = isArray;
 exports.isArrayBuffer = isArrayBuffer;
@@ -2470,6 +2563,7 @@ exports.isExternalLinkTargetSet = isExternalLinkTargetSet;
 exports.isInt = isInt;
 exports.isNum = isNum;
 exports.isString = isString;
+exports.isSameOrigin = isSameOrigin;
 exports.isValidUrl = isValidUrl;
 exports.addLinkAttributes = addLinkAttributes;
 exports.loadJpegStream = loadJpegStream;
@@ -2499,6 +2593,7 @@ var AnnotationBorderStyleType = sharedUtil.AnnotationBorderStyleType;
 var AnnotationType = sharedUtil.AnnotationType;
 var Util = sharedUtil.Util;
 var addLinkAttributes = sharedUtil.addLinkAttributes;
+var getFilenameFromUrl = sharedUtil.getFilenameFromUrl;
 var warn = sharedUtil.warn;
 var CustomStyle = displayDOMUtils.CustomStyle;
 
@@ -2509,6 +2604,7 @@ var CustomStyle = displayDOMUtils.CustomStyle;
  * @property {PDFPage} page
  * @property {PageViewport} viewport
  * @property {IPDFLinkService} linkService
+ * @property {DownloadManager} downloadManager
  */
 
 /**
@@ -2550,8 +2646,11 @@ AnnotationElementFactory.prototype =
       case AnnotationType.STRIKEOUT:
         return new StrikeOutAnnotationElement(parameters);
 
+      case AnnotationType.FILEATTACHMENT:
+        return new FileAttachmentAnnotationElement(parameters);
+
       default:
-        throw new Error('Unimplemented annotation type "' + subtype + '"');
+        return new AnnotationElement(parameters);
     }
   }
 };
@@ -2561,14 +2660,18 @@ AnnotationElementFactory.prototype =
  * @alias AnnotationElement
  */
 var AnnotationElement = (function AnnotationElementClosure() {
-  function AnnotationElement(parameters) {
+  function AnnotationElement(parameters, isRenderable) {
+    this.isRenderable = isRenderable || false;
     this.data = parameters.data;
     this.layer = parameters.layer;
     this.page = parameters.page;
     this.viewport = parameters.viewport;
     this.linkService = parameters.linkService;
+    this.downloadManager = parameters.downloadManager;
 
-    this.container = this._createContainer();
+    if (isRenderable) {
+      this.container = this._createContainer();
+    }
   }
 
   AnnotationElement.prototype = /** @lends AnnotationElement.prototype */ {
@@ -2664,6 +2767,43 @@ var AnnotationElement = (function AnnotationElementClosure() {
     },
 
     /**
+     * Create a popup for the annotation's HTML element. This is used for
+     * annotations that do not have a Popup entry in the dictionary, but
+     * are of a type that works with popups (such as Highlight annotations).
+     *
+     * @private
+     * @param {HTMLSectionElement} container
+     * @param {HTMLDivElement|HTMLImageElement|null} trigger
+     * @param {Object} data
+     * @memberof AnnotationElement
+     */
+    _createPopup:
+        function AnnotationElement_createPopup(container, trigger, data) {
+      // If no trigger element is specified, create it.
+      if (!trigger) {
+        trigger = document.createElement('div');
+        trigger.style.height = container.style.height;
+        trigger.style.width = container.style.width;
+        container.appendChild(trigger);
+      }
+
+      var popupElement = new PopupElement({
+        container: container,
+        trigger: trigger,
+        color: data.color,
+        title: data.title,
+        contents: data.contents,
+        hideWrapper: true
+      });
+      var popup = popupElement.render();
+
+      // Position the popup next to the annotation's container.
+      popup.style.left = container.style.width;
+
+      container.appendChild(popup);
+    },
+
+    /**
      * Render the annotation's HTML element in the empty container.
      *
      * @public
@@ -2683,7 +2823,7 @@ var AnnotationElement = (function AnnotationElementClosure() {
  */
 var LinkAnnotationElement = (function LinkAnnotationElementClosure() {
   function LinkAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    AnnotationElement.call(this, parameters, true);
   }
 
   Util.inherit(LinkAnnotationElement, AnnotationElement, {
@@ -2765,7 +2905,9 @@ var LinkAnnotationElement = (function LinkAnnotationElementClosure() {
  */
 var TextAnnotationElement = (function TextAnnotationElementClosure() {
   function TextAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !!(parameters.data.hasPopup ||
+                          parameters.data.title || parameters.data.contents);
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(TextAnnotationElement, AnnotationElement, {
@@ -2789,20 +2931,7 @@ var TextAnnotationElement = (function TextAnnotationElementClosure() {
       image.dataset.l10nArgs = JSON.stringify({type: this.data.name});
 
       if (!this.data.hasPopup) {
-        var popupElement = new PopupElement({
-          container: this.container,
-          trigger: image,
-          color: this.data.color,
-          title: this.data.title,
-          contents: this.data.contents,
-          hideWrapper: true
-        });
-        var popup = popupElement.render();
-
-        // Position the popup next to the Text annotation's container.
-        popup.style.left = image.style.width;
-
-        this.container.appendChild(popup);
+        this._createPopup(this.container, image, this.data);
       }
 
       this.container.appendChild(image);
@@ -2819,7 +2948,9 @@ var TextAnnotationElement = (function TextAnnotationElementClosure() {
  */
 var WidgetAnnotationElement = (function WidgetAnnotationElementClosure() {
   function WidgetAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !parameters.data.hasAppearance &&
+                       !!parameters.data.fieldValue;
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(WidgetAnnotationElement, AnnotationElement, {
@@ -2886,7 +3017,8 @@ var WidgetAnnotationElement = (function WidgetAnnotationElementClosure() {
  */
 var PopupAnnotationElement = (function PopupAnnotationElementClosure() {
   function PopupAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !!(parameters.data.title || parameters.data.contents);
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(PopupAnnotationElement, AnnotationElement, {
@@ -3076,7 +3208,9 @@ var PopupElement = (function PopupElementClosure() {
 var HighlightAnnotationElement = (
     function HighlightAnnotationElementClosure() {
   function HighlightAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !!(parameters.data.hasPopup ||
+                          parameters.data.title || parameters.data.contents);
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(HighlightAnnotationElement, AnnotationElement, {
@@ -3089,6 +3223,11 @@ var HighlightAnnotationElement = (
      */
     render: function HighlightAnnotationElement_render() {
       this.container.className = 'highlightAnnotation';
+
+      if (!this.data.hasPopup) {
+        this._createPopup(this.container, null, this.data);
+      }
+
       return this.container;
     }
   });
@@ -3103,7 +3242,9 @@ var HighlightAnnotationElement = (
 var UnderlineAnnotationElement = (
     function UnderlineAnnotationElementClosure() {
   function UnderlineAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !!(parameters.data.hasPopup ||
+                          parameters.data.title || parameters.data.contents);
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(UnderlineAnnotationElement, AnnotationElement, {
@@ -3116,6 +3257,11 @@ var UnderlineAnnotationElement = (
      */
     render: function UnderlineAnnotationElement_render() {
       this.container.className = 'underlineAnnotation';
+
+      if (!this.data.hasPopup) {
+        this._createPopup(this.container, null, this.data);
+      }
+
       return this.container;
     }
   });
@@ -3129,7 +3275,9 @@ var UnderlineAnnotationElement = (
  */
 var SquigglyAnnotationElement = (function SquigglyAnnotationElementClosure() {
   function SquigglyAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !!(parameters.data.hasPopup ||
+                          parameters.data.title || parameters.data.contents);
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(SquigglyAnnotationElement, AnnotationElement, {
@@ -3142,6 +3290,11 @@ var SquigglyAnnotationElement = (function SquigglyAnnotationElementClosure() {
      */
     render: function SquigglyAnnotationElement_render() {
       this.container.className = 'squigglyAnnotation';
+
+      if (!this.data.hasPopup) {
+        this._createPopup(this.container, null, this.data);
+      }
+
       return this.container;
     }
   });
@@ -3156,7 +3309,9 @@ var SquigglyAnnotationElement = (function SquigglyAnnotationElementClosure() {
 var StrikeOutAnnotationElement = (
     function StrikeOutAnnotationElementClosure() {
   function StrikeOutAnnotationElement(parameters) {
-    AnnotationElement.call(this, parameters);
+    var isRenderable = !!(parameters.data.hasPopup ||
+                          parameters.data.title || parameters.data.contents);
+    AnnotationElement.call(this, parameters, isRenderable);
   }
 
   Util.inherit(StrikeOutAnnotationElement, AnnotationElement, {
@@ -3169,11 +3324,72 @@ var StrikeOutAnnotationElement = (
      */
     render: function StrikeOutAnnotationElement_render() {
       this.container.className = 'strikeoutAnnotation';
+
+      if (!this.data.hasPopup) {
+        this._createPopup(this.container, null, this.data);
+      }
+
       return this.container;
     }
   });
 
   return StrikeOutAnnotationElement;
+})();
+
+/**
+ * @class
+ * @alias FileAttachmentAnnotationElement
+ */
+var FileAttachmentAnnotationElement = (
+    function FileAttachmentAnnotationElementClosure() {
+  function FileAttachmentAnnotationElement(parameters) {
+    AnnotationElement.call(this, parameters, true);
+
+    this.filename = getFilenameFromUrl(parameters.data.file.filename);
+    this.content = parameters.data.file.content;
+  }
+
+  Util.inherit(FileAttachmentAnnotationElement, AnnotationElement, {
+    /**
+     * Render the file attachment annotation's HTML element in the empty
+     * container.
+     *
+     * @public
+     * @memberof FileAttachmentAnnotationElement
+     * @returns {HTMLSectionElement}
+     */
+    render: function FileAttachmentAnnotationElement_render() {
+      this.container.className = 'fileAttachmentAnnotation';
+
+      var trigger = document.createElement('div');
+      trigger.style.height = this.container.style.height;
+      trigger.style.width = this.container.style.width;
+      trigger.addEventListener('dblclick', this._download.bind(this));
+
+      if (!this.data.hasPopup && (this.data.title || this.data.contents)) {
+        this._createPopup(this.container, trigger, this.data);
+      }
+
+      this.container.appendChild(trigger);
+      return this.container;
+    },
+
+    /**
+     * Download the file attachment associated with this annotation.
+     *
+     * @private
+     * @memberof FileAttachmentAnnotationElement
+     */
+    _download: function FileAttachmentAnnotationElement_download() {
+      if (!this.downloadManager) {
+        warn('Download cannot be started due to unavailable download manager');
+        return;
+      }
+      this.downloadManager.downloadData(this.content, this.filename, '');
+    }
+  });
+
+  return FileAttachmentAnnotationElement;
 })();
 
 /**
@@ -3203,7 +3419,7 @@ var AnnotationLayer = (function AnnotationLayerClosure() {
 
       for (var i = 0, ii = parameters.annotations.length; i < ii; i++) {
         var data = parameters.annotations[i];
-        if (!data || !data.hasHtml) {
+        if (!data) {
           continue;
         }
 
@@ -3212,10 +3428,13 @@ var AnnotationLayer = (function AnnotationLayerClosure() {
           layer: parameters.div,
           page: parameters.page,
           viewport: parameters.viewport,
-          linkService: parameters.linkService
+          linkService: parameters.linkService,
+          downloadManager: parameters.downloadManager
         };
         var element = annotationElementFactory.create(properties);
-        parameters.div.appendChild(element.render());
+        if (element.isRenderable) {
+          parameters.div.appendChild(element.render());
+        }
       }
     },
 
@@ -3565,7 +3784,7 @@ Object.defineProperty(FontLoader, 'isSyncFontLoadingSupported', {
 
 var FontFaceObject = (function FontFaceObjectClosure() {
   function FontFaceObject(translatedData) {
-    this.compiledGlyphs = {};
+    this.compiledGlyphs = Object.create(null);
     // importing translated data
     for (var i in translatedData) {
       this[i] = translatedData[i];
@@ -3759,7 +3978,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return false;
     }
 
-    function _createViewport(width, height, page) {
+    function _createViewport(width, height, page, dpiRatio) {
         var actualWidth = page.pageInfo.view[2];
         var actualHeight = page.pageInfo.view[3];
 
@@ -3768,12 +3987,12 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
         if (typeof(width)=='number' && typeof(height)!='number') {
             scale = width/actualWidth;
-            viewport = page.getViewport(scale);
+            viewport = page.getViewport(scale * dpiRatio);
             return viewport;
         }
         if (typeof(width)!='number' && typeof(height)=='number') {
             scale = height/actualHeight;
-            viewport = page.getViewport(scale);
+            viewport = page.getViewport(scale * dpiRatio);
             return viewport;
         }
         // This one is special. Specifying a  width & height means setting bounds. Both are tested and the
@@ -3782,13 +4001,13 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             scale = height/actualHeight;
             if (scale*actualWidth>width) { // too big, use other dimension's scale
                 scale = width/actualWidth;
-                viewport = page.getViewport(scale);
+                viewport = page.getViewport(scale * dpiRatio);
                 return viewport;
             }
-            viewport = page.getViewport(scale);
+            viewport = page.getViewport(scale * dpiRatio);
             return viewport;
         }
-        viewport = page.getViewport(1);
+        viewport = page.getViewport(dpiRatio);
         return viewport;
     }
 
@@ -4361,7 +4580,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             //
             // Get viewport
             //
-            var viewport = _createViewport(width, height, page);
+            var viewport = _createViewport(width, height, page, 1.0);
             //
             // Page Holder
             //
@@ -4381,14 +4600,28 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             pageHolder.appendChild(canvas);
             canvas.height = viewport.height;
             canvas.width = viewport.width;
+						 
+			// Tweak canvas to support hi-dpi rendering (without affecting the form fields positioning)
+			var context = canvas.getContext('2d');
+			var devicePixelRatio = window.devicePixelRatio || 1;
+			var backingStoreRatio = context.webkitBackingStorePixelRatio ||
+									context.mozBackingStorePixelRatio ||
+									context.msBackingStorePixelRatio ||
+									context.oBackingStorePixelRatio ||
+									context.backingStorePixelRatio || 1;
+			var ratio = devicePixelRatio / backingStoreRatio;
+			canvas.style.width = canvas.width + "px";
+			canvas.style.height = canvas.height + "px";
+			canvas.width = canvas.width * ratio;
+			canvas.height = canvas.height * ratio;
 			if (postCreationTweak) postCreationTweak("CANVAS","canvas",canvas);
+						 
             //
             // Render PDF page into canvas context
             //
-            var context = canvas.getContext('2d');
             var renderContext = {
                 canvasContext: context,
-                viewport: viewport,
+                viewport: _createViewport(width, height, page, ratio),
 				intent: doForm ? "display" : "print",
             };
 			// Render the page, and optionally the forms overlay
@@ -4466,7 +4699,7 @@ var Metadata = PDFJS.Metadata = (function MetadataClosure() {
     }
 
     this.metaDocument = meta;
-    this.metadata = {};
+    this.metadata = Object.create(null);
     this.parse();
   }
 
@@ -4885,7 +5118,7 @@ var SVGGraphics = (function SVGGraphicsClosure() {
     this.pendingEOFill = false;
 
     this.embedFonts = false;
-    this.embeddedFonts = {};
+    this.embeddedFonts = Object.create(null);
     this.cssStyle = null;
   }
 
@@ -8280,15 +8513,19 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           }
         }
 
-        if (simpleFillText && !accent) {
-          // common case
-          ctx.fillText(character, scaledX, scaledY);
-        } else {
-          this.paintChar(character, scaledX, scaledY);
-          if (accent) {
-            scaledAccentX = scaledX + accent.offset.x / fontSizeScale;
-            scaledAccentY = scaledY - accent.offset.y / fontSizeScale;
-            this.paintChar(accent.fontChar, scaledAccentX, scaledAccentY);
+        // Only attempt to draw the glyph if it is actually in the embedded font
+        // file or if there isn't a font file so the fallback font is shown.
+        if (glyph.isInFont || font.missingFile) {
+          if (simpleFillText && !accent) {
+            // common case
+            ctx.fillText(character, scaledX, scaledY);
+          } else {
+            this.paintChar(character, scaledX, scaledY);
+            if (accent) {
+              scaledAccentX = scaledX + accent.offset.x / fontSizeScale;
+              scaledAccentY = scaledY - accent.offset.y / fontSizeScale;
+              this.paintChar(accent.fontChar, scaledAccentX, scaledAccentY);
+            }
           }
         }
 
@@ -9034,6 +9271,7 @@ var error = sharedUtil.error;
 var deprecated = sharedUtil.deprecated;
 var info = sharedUtil.info;
 var isArrayBuffer = sharedUtil.isArrayBuffer;
+var isSameOrigin = sharedUtil.isSameOrigin;
 var loadJpegStream = sharedUtil.loadJpegStream;
 var stringToBytes = sharedUtil.stringToBytes;
 var warn = sharedUtil.warn;
@@ -9399,9 +9637,9 @@ PDFJS.getDocument = function getDocument(src,
         throw new Error('Loading aborted');
       }
       var messageHandler = new MessageHandler(docId, workerId, worker.port);
-      messageHandler.send('Ready', null);
       var transport = new WorkerTransport(messageHandler, task, rangeTransport);
       task._transport = transport;
+      messageHandler.send('Ready', null);
     });
   }).catch(task._capability.reject);
 
@@ -9677,11 +9915,9 @@ var PDFDocumentProxy = (function PDFDocumentProxyClosure() {
       return this.transport.getDestination(id);
     },
     /**
-     * @return {Promise} A promise that is resolved with: an Array containing
-     *   the pageLabels that correspond to the pageIndexes; or null, when no
-     *   pageLabels are present in the PDF file.
-     *   NOTE: If the pageLabels are all identical to standard page numbering,
-     *         i.e. [1, 2, 3, ...], the promise is resolved with an empty Array.
+     * @return {Promise} A promise that is resolved with:
+     *   an Array containing the pageLabels that correspond to the pageIndexes,
+     *   or `null` when no pageLabels are present in the PDF file.
      */
     getPageLabels: function PDFDocumentProxy_getPageLabels() {
       return this.transport.getPageLabels();
@@ -9708,7 +9944,7 @@ var PDFDocumentProxy = (function PDFDocumentProxyClosure() {
      *   title: string,
      *   bold: boolean,
      *   italic: boolean,
-     *   color: rgb array,
+     *   color: rgb Uint8Array,
      *   dest: dest obj,
      *   url: string,
      *   items: array of more items like this
@@ -9859,7 +10095,7 @@ var PDFPageProxy = (function PDFPageProxyClosure() {
     this.objs = new PDFObjects();
     this.cleanupAfterRender = false;
     this.pendingCleanup = false;
-    this.intentStates = {};
+    this.intentStates = Object.create(null);
     this.destroyed = false;
   }
   PDFPageProxy.prototype = /** @lends PDFPageProxy.prototype */ {
@@ -9934,7 +10170,7 @@ var PDFPageProxy = (function PDFPageProxyClosure() {
       var renderingIntent = (params.intent === 'print' ? 'print' : 'display');
 
       if (!this.intentStates[renderingIntent]) {
-        this.intentStates[renderingIntent] = {};
+        this.intentStates[renderingIntent] = Object.create(null);
       }
       var intentState = this.intentStates[renderingIntent];
 
@@ -10021,17 +10257,23 @@ var PDFPageProxy = (function PDFPageProxyClosure() {
       function operatorListChanged() {
         if (intentState.operatorList.lastChunk) {
           intentState.opListReadCapability.resolve(intentState.operatorList);
+
+          var i = intentState.renderTasks.indexOf(opListTask);
+          if (i >= 0) {
+            intentState.renderTasks.splice(i, 1);
+          }
         }
       }
 
       var renderingIntent = 'oplist';
       if (!this.intentStates[renderingIntent]) {
-        this.intentStates[renderingIntent] = {};
+        this.intentStates[renderingIntent] = Object.create(null);
       }
       var intentState = this.intentStates[renderingIntent];
+      var opListTask;
 
       if (!intentState.opListReadCapability) {
-        var opListTask = {};
+        opListTask = {};
         opListTask.operatorListChanged = operatorListChanged;
         intentState.receivingOperatorList = true;
         intentState.opListReadCapability = createPromiseCapability();
@@ -10074,6 +10316,10 @@ var PDFPageProxy = (function PDFPageProxyClosure() {
 
       var waitOn = [];
       Object.keys(this.intentStates).forEach(function(intent) {
+        if (intent === 'oplist') {
+          // Avoid errors below, since the renderTasks are just stubs.
+          return;
+        }
         var intentState = this.intentStates[intent];
         intentState.renderTasks.forEach(function(renderTask) {
           var renderCompleted = renderTask.capability.promise.
@@ -10223,6 +10469,14 @@ var PDFWorker = (function PDFWorkerClosure() {
     return PDFJS.fakeWorkerFilesLoadedCapability.promise;
   }
 
+  function createCDNWrapper(url) {
+    // We will rely on blob URL's property to specify origin.
+    // We want this function to fail in case if createObjectURL or Blob do not
+    // exist or fail for some reason -- our Worker creation will fail anyway.
+    var wrapper = 'importScripts(\'' + url + '\');';
+    return URL.createObjectURL(new Blob([wrapper]));
+  }
+
   function PDFWorker(name) {
     this.name = name;
     this.destroyed = false;
@@ -10249,7 +10503,7 @@ var PDFWorker = (function PDFWorkerClosure() {
 
     _initialize: function PDFWorker_initialize() {
       // If worker support isn't disabled explicit and the browser has worker
-      // support, create a new web worker and test if it/the browser fullfills
+      // support, create a new web worker and test if it/the browser fulfills
       // all requirements to run parts of pdf.js in a web worker.
       // Right now, the requirement is, that an Uint8Array is still an
       // Uint8Array as it arrives on the worker. (Chrome added this with v.15.)
@@ -10258,20 +10512,19 @@ var PDFWorker = (function PDFWorkerClosure() {
         var workerSrc = getWorkerSrc();
 
         try {
+//#if GENERIC
+//        // Wraps workerSrc path into blob URL, if the former does not belong
+//        // to the same origin.
+//        if (!isSameOrigin(window.location.href, workerSrc)) {
+//          workerSrc = createCDNWrapper(
+//            combineUrl(window.location.href, workerSrc));
+//        }
+//#endif
           // Some versions of FF can't create a worker on localhost, see:
           // https://bugzilla.mozilla.org/show_bug.cgi?id=683280
           var worker = new Worker(workerSrc);
           var messageHandler = new MessageHandler('main', 'worker', worker);
-//#if !PRODUCTION
-          // Don't allow worker to be destroyed by Chrome, see:
-          // https://code.google.com/p/chromium/issues/detail?id=572225
-          var jsWorkerId = '_workerKungfuGrip_' + Math.random();
-          window[jsWorkerId] = worker;
-//#endif
           messageHandler.on('test', function PDFWorker_test(data) {
-//#if !PRODUCTION
-            delete window[jsWorkerId];
-//#endif
             if (this.destroyed) {
               this._readyCapability.reject(new Error('Worker was destroyed'));
               messageHandler.destroy();
@@ -10857,7 +11110,7 @@ var WorkerTransport = (function WorkerTransportClosure() {
  */
 var PDFObjects = (function PDFObjectsClosure() {
   function PDFObjects() {
-    this.objs = {};
+    this.objs = Object.create(null);
   }
 
   PDFObjects.prototype = {
@@ -10948,7 +11201,7 @@ var PDFObjects = (function PDFObjectsClosure() {
     },
 
     clear: function PDFObjects_clear() {
-      this.objs = {};
+      this.objs = Object.create(null);
     }
   };
   return PDFObjects;
