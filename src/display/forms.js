@@ -80,7 +80,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return false;
     }
 
-    function _createViewport(width, height, page) {
+    function _createViewport(width, height, page, dpiRatio) {
         var actualWidth = page.pageInfo.view[2];
         var actualHeight = page.pageInfo.view[3];
 
@@ -89,12 +89,12 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
         if (typeof(width)=='number' && typeof(height)!='number') {
             scale = width/actualWidth;
-            viewport = page.getViewport(scale);
+            viewport = page.getViewport(scale * dpiRatio);
             return viewport;
         }
         if (typeof(width)!='number' && typeof(height)=='number') {
             scale = height/actualHeight;
-            viewport = page.getViewport(scale);
+            viewport = page.getViewport(scale * dpiRatio);
             return viewport;
         }
         // This one is special. Specifying a  width & height means setting bounds. Both are tested and the
@@ -103,13 +103,13 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             scale = height/actualHeight;
             if (scale*actualWidth>width) { // too big, use other dimension's scale
                 scale = width/actualWidth;
-                viewport = page.getViewport(scale);
+                viewport = page.getViewport(scale * dpiRatio);
                 return viewport;
             }
-            viewport = page.getViewport(scale);
+            viewport = page.getViewport(scale * dpiRatio);
             return viewport;
         }
-        viewport = page.getViewport(1);
+        viewport = page.getViewport(dpiRatio);
         return viewport;
     }
 
@@ -682,7 +682,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             //
             // Get viewport
             //
-            var viewport = _createViewport(width, height, page);
+            var viewport = _createViewport(width, height, page, 1.0);
             //
             // Page Holder
             //
@@ -702,14 +702,28 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             pageHolder.appendChild(canvas);
             canvas.height = viewport.height;
             canvas.width = viewport.width;
+						 
+			// Tweak canvas to support hi-dpi rendering (without affecting the form fields positioning)
+			var context = canvas.getContext('2d');
+			var devicePixelRatio = window.devicePixelRatio || 1;
+			var backingStoreRatio = context.webkitBackingStorePixelRatio ||
+									context.mozBackingStorePixelRatio ||
+									context.msBackingStorePixelRatio ||
+									context.oBackingStorePixelRatio ||
+									context.backingStorePixelRatio || 1;
+			var ratio = devicePixelRatio / backingStoreRatio;
+			canvas.style.width = canvas.width + "px";
+			canvas.style.height = canvas.height + "px";
+			canvas.width = canvas.width * ratio;
+			canvas.height = canvas.height * ratio;
 			if (postCreationTweak) postCreationTweak("CANVAS","canvas",canvas);
+						 
             //
             // Render PDF page into canvas context
             //
-            var context = canvas.getContext('2d');
             var renderContext = {
                 canvasContext: context,
-                viewport: viewport,
+                viewport: _createViewport(width, height, page, ratio),
 				intent: doForm ? "display" : "print",
             };
 			// Render the page, and optionally the forms overlay
