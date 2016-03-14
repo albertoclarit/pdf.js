@@ -217,15 +217,24 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
     function _getCheckBoxProperties(item, viewport, values, basicData) {
         var selected = item.selected;
-        if (basicData.id in values) {
-            if (values[basicData.id]) {
-                selected = true;
-            }
-            else {
-                selected = false;
-            }
-        }
+		var v = values[basicData.id];
+		switch (typeof v)
+		{
+			case "string":
+			{
+				// We were passed a string, chances are this person knows the export_value
+				selected = (item.options.indexOf(v)>0);		// 2nd option is the "checked" state
+				break;
+			}
+			case "boolean":
+			{
+				// We were passed a boolean, just use it as is
+				selected = v;
+				break;
+			}
+		}
         return {
+			options: item.options,
             selected: selected,
             readOnly: item.readOnly,
         };
@@ -330,8 +339,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 	defaultCreationRoutines[fieldTypes.CHECK_BOX] = function(itemProperties, viewport) {
 		var control = document.createElement('input');
-		control.type='checkbox';
-		control.value = 1; // do not believe checkboxs have values in pdfs
+		control.type = 'checkbox';
+		control.value = itemProperties.options[1];		// Checkboxes are often Off/Yes, however this is a custom field controlled by export_value
 		control.style.padding = '0';
 		control.style.margin = '0';
 		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';

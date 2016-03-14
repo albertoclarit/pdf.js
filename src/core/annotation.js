@@ -605,10 +605,50 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
     // IAG CODE
     function checkProperties() {
       try {
-        data.selected = dict.get('V').name=='Yes' ? true : false;
+		// What is the default value?
+		var defaultValue = dict.get('V') ? dict.get('V').name : 'Off';
+		
+		// Method 1 : Checkboxes depend on export_value and not 'Yes' to tell if they are checked, this comes from appearance options
+		var appearanceState = dict.get('AP');
+		if (appearanceState && isDict(appearanceState)) {
+			var appearances = appearanceState.get('N');
+			if (appearances && isDict(appearances))
+			{
+				data.options = [];
+				data.selected = false;
+				for (var key in appearances.map)
+				{
+					data.options.push(key);
+					if (defaultValue==key)
+					{
+						data.selected = (data.options.length>1);	// 2nd key is the selected state
+					}
+				}
+			}
+		}
+
+		// Method 2 : If the appearances failed, there may be an /AS key with the export_value (if selected)
+		if (!data.options)
+		{
+			var as = dict.get('AS');
+			if (as && as.name!='Off')	// This is sort of hacky because non-english docs may not read 'Off'
+			{
+				data.selected = (defaultValue==as.name);
+				data.options = ['Off',as.name];
+			}
+		}
+						
+		// Method 3 : Give up, default back to the old method if the others didn't work (unlikely)
+		if (!data.options)
+		{
+			data.selected = (defaultValue=='Yes');	// This is sort of hacky because non-english docs may not read 'Yes'
+			data.options = ['Off','Yes'];
+		}
+
       }
       catch(e) {
-        data.selected=false;
+		data.selected = false;
+		data.options = ['Off','Yes'];
       }
     }
 
