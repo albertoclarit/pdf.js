@@ -641,7 +641,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 		// Method 3 : Give up, default back to the old method if the others didn't work (unlikely)
 		if (!data.options)
 		{
-			data.selected = (defaultValue=='Yes');	// This is sort of hacky because non-english docs may not read 'Yes'
+			data.selected = (defaultValue!='Off');	// This is sort of hacky because non-english docs may not read 'Off'
 			data.options = ['Off','Yes'];
 		}
 
