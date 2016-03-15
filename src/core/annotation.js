@@ -621,6 +621,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 					if (key=='Off') data.options.unshift(key);
 					else data.options.push(key);
 				}
+				if (data.options.length==1) data.options.unshift('Off');		// Certain files only contain the on appearance
 				data.selected = (data.options.length>=2) ? (defaultValue==data.options[1]): false;
 			}
 		}
@@ -696,6 +697,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 					if (key=='Off') data.options.unshift(key);
 					else data.options.push(key);
 				}
+				if (data.options.length==1) data.options.unshift('Off');		// Certain files only contain the on appearance
 				data.selected = (data.options.length>=2) ? (defaultValue==data.options[1]): false;
 			}
 		}
