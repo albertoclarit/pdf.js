@@ -615,15 +615,13 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 			if (appearances && isDict(appearances))
 			{
 				data.options = [];
-				data.selected = false;
 				for (var key in appearances.map)
 				{
-					data.options.push(key);
-					if (defaultValue==key)
-					{
-						data.selected = (data.options.length>1);	// 2nd key is the selected state
-					}
+					// Make sure Off is always the first state (by unshifting)
+					if (key=='Off') data.options.unshift(key);
+					else data.options.push(key);
 				}
+				data.selected = (data.options.length>=2) ? (defaultValue==data.options[1]): false;
 			}
 		}
 
@@ -631,7 +629,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 		if (!data.options)
 		{
 			var as = dict.get('AS');
-			if (as && as.name!='Off')	// This is sort of hacky because non-english docs may not read 'Off'
+			if (as && as.name!='Off')
 			{
 				data.selected = (defaultValue==as.name);
 				data.options = ['Off',as.name];
@@ -641,7 +639,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
 		// Method 3 : Give up, default back to the old method if the others didn't work (unlikely)
 		if (!data.options)
 		{
-			data.selected = (defaultValue!='Off');	// This is sort of hacky because non-english docs may not read 'Off'
+			data.selected = (defaultValue!='Off');
 			data.options = ['Off','Yes'];
 		}
 
@@ -678,18 +676,34 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
       catch(e) {
         data.options=false;
       }
-
-      // TODO! The following lines break documents containing dropdowns and selects
-      // TODO! Investigate why these are here: document(dict.get('Parent'),3,'`parent',false);
-      // TODO! Investigate why these are here: document(dict,5,'`current',false);
     }
 
     function radioProperties () {
       try {
-        data.selected = dict.get('AS').name!='Off' ? true : false; // an easier way to get at it
+		// What is the default value?
+		var defaultValue = dict.get('AS') ? dict.get('AS').name : 'Off';
+						
+		// The value for the radio, should be the second key in the appearances map
+		var appearanceState = dict.get('AP');
+		if (appearanceState && isDict(appearanceState)) {
+			var appearances = appearanceState.get('N');
+			if (appearances && isDict(appearances))
+			{
+				data.options = [];
+				for (var key in appearances.map)
+				{
+					// Make sure Off is always the first state (by unshifting)
+					if (key=='Off') data.options.unshift(key);
+					else data.options.push(key);
+				}
+				data.selected = (data.options.length>=2) ? (defaultValue==data.options[1]): false;
+			}
+		}
       }
       catch(e) {
-        data.selected=false;
+		// This shouldn't happen, but if it was to somehow occur, we need a somewhat unique value for Yes
+		data.options = ['Off','Yes_'+Math.round(Math.random() * 1000)];
+		data.selected = false;
       }
     }
 

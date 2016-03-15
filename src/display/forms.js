@@ -162,12 +162,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         };
         if (item.fullName.indexOf('.`')!=-1) {
             prop.correctedId = item.fullName.substring(0,item.fullName.indexOf('.`'));
-            prop.groupingId = item.fullName.substring(item.fullName.indexOf('.`')+2);
             prop.isGroupMember = true;
         }
         else {
             prop.correctedId = item.fullName;
-            prop.groupingId = 0;
             prop.isGroupMember = false;
         }
         try {
@@ -247,14 +245,11 @@ var FormFunctionality = (function FormFunctionalityClosure() {
     function _getRadioButtonProperties(item, viewport, values, basicData) {
         var selected = item.selected;
         if (basicData.correctedId in values) {
-            if (values[basicData.correctedId]==basicData.groupingId) {
-                selected = true;
-            }
-            else {
-                selected = false;
-            }
+			var v = values[basicData.correctedId];
+			selected = (item.options.indexOf(v)>0);
         }
         return {
+			options: item.options,
             selected: selected,
             readOnly: item.readOnly,
         };
@@ -353,8 +348,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 	defaultCreationRoutines[fieldTypes.RADIO_BUTTON] = function(itemProperties, viewport) {
 		var control = document.createElement('input');
-		control.type='radio';
-		control.value = itemProperties.groupingId;		// Value is in index (matches PDF)
+		control.type = 'radio';
+		control.value = itemProperties.options[1];		// Radio buttons have an Off/Yes style value, however Yes is usually a unique ID unless grouping is turned on
 		control.name = itemProperties.correctedId;		// Name is used to group radio buttons
 		control.style.padding = '0';
 		control.style.margin = '0';
