@@ -667,7 +667,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
             }
             else {
               data.options[key] = {
-                'value': key,
+                'value': opt[key],		// When we have no export value, FDF will expect the text, not an index
                 'text': opt[key]
               };
             }

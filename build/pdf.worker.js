@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdfWorker = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.166';
-var pdfjsBuild = 'e4df052';
+var pdfjsVersion = '1.4.171';
+var pdfjsBuild = '9401df1';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -40398,10 +40398,49 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
     // IAG CODE
     function checkProperties() {
       try {
-        data.selected = dict.get('V').name=='Yes' ? true : false;
+		// What is the default value?
+		var defaultValue = dict.get('V') ? dict.get('V').name : 'Off';
+		
+		// Method 1 : Checkboxes depend on export_value and not 'Yes' to tell if they are checked, this comes from appearance options
+		var appearanceState = dict.get('AP');
+		if (appearanceState && isDict(appearanceState)) {
+			var appearances = appearanceState.get('N');
+			if (appearances && isDict(appearances))
+			{
+				data.options = [];
+				for (var key in appearances.map)
+				{
+					// Make sure Off is always the first state (by unshifting)
+					if (key=='Off') data.options.unshift(key);
+					else data.options.push(key);
+				}
+				if (data.options.length==1) data.options.unshift('Off');		// Certain files only contain the on appearance
+				data.selected = (data.options.length>=2) ? (defaultValue==data.options[1]): false;
+			}
+		}
+
+		// Method 2 : If the appearances failed, there may be an /AS key with the export_value (if selected)
+		if (!data.options)
+		{
+			var as = dict.get('AS');
+			if (as && as.name!='Off')
+			{
+				data.selected = (defaultValue==as.name);
+				data.options = ['Off',as.name];
+			}
+		}
+						
+		// Method 3 : Give up, default back to the old method if the others didn't work (unlikely)
+		if (!data.options)
+		{
+			data.selected = (defaultValue!='Off');
+			data.options = ['Off','Yes'];
+		}
+
       }
       catch(e) {
-        data.selected=false;
+		data.selected = false;
+		data.options = ['Off','Yes'];
       }
     }
 
@@ -40421,7 +40460,7 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
             }
             else {
               data.options[key] = {
-                'value': key,
+                'value': opt[key],		// When we have no export value, FDF will expect the text, not an index
                 'text': opt[key]
               };
             }
@@ -40431,18 +40470,35 @@ var WidgetAnnotation = (function WidgetAnnotationClosure() {
       catch(e) {
         data.options=false;
       }
-
-      // TODO! The following lines break documents containing dropdowns and selects
-      // TODO! Investigate why these are here: document(dict.get('Parent'),3,'`parent',false);
-      // TODO! Investigate why these are here: document(dict,5,'`current',false);
     }
 
     function radioProperties () {
       try {
-        data.selected = dict.get('AS').name!='Off' ? true : false; // an easier way to get at it
+		// What is the default value?
+		var defaultValue = dict.get('AS') ? dict.get('AS').name : 'Off';
+						
+		// The value for the radio, should be the second key in the appearances map
+		var appearanceState = dict.get('AP');
+		if (appearanceState && isDict(appearanceState)) {
+			var appearances = appearanceState.get('N');
+			if (appearances && isDict(appearances))
+			{
+				data.options = [];
+				for (var key in appearances.map)
+				{
+					// Make sure Off is always the first state (by unshifting)
+					if (key=='Off') data.options.unshift(key);
+					else data.options.push(key);
+				}
+				if (data.options.length==1) data.options.unshift('Off');		// Certain files only contain the on appearance
+				data.selected = (data.options.length>=2) ? (defaultValue==data.options[1]): false;
+			}
+		}
       }
       catch(e) {
-        data.selected=false;
+		// This shouldn't happen, but if it was to somehow occur, we need a somewhat unique value for Yes
+		data.options = ['Off','Yes_'+Math.round(Math.random() * 1000)];
+		data.selected = false;
       }
     }
 

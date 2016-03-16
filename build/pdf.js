@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdf = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.166';
-var pdfjsBuild = 'e4df052';
+var pdfjsVersion = '1.4.171';
+var pdfjsBuild = '9401df1';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -4060,12 +4060,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         };
         if (item.fullName.indexOf('.`')!=-1) {
             prop.correctedId = item.fullName.substring(0,item.fullName.indexOf('.`'));
-            prop.groupingId = item.fullName.substring(item.fullName.indexOf('.`')+2);
             prop.isGroupMember = true;
         }
         else {
             prop.correctedId = item.fullName;
-            prop.groupingId = 0;
             prop.isGroupMember = false;
         }
         try {
@@ -4115,15 +4113,24 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
     function _getCheckBoxProperties(item, viewport, values, basicData) {
         var selected = item.selected;
-        if (basicData.id in values) {
-            if (values[basicData.id]) {
-                selected = true;
-            }
-            else {
-                selected = false;
-            }
-        }
+		var v = values[basicData.id];
+		switch (typeof v)
+		{
+			case "string":
+			{
+				// We were passed a string, chances are this person knows the export_value
+				selected = (item.options.indexOf(v)>0);		// 2nd option is the "checked" state
+				break;
+			}
+			case "boolean":
+			{
+				// We were passed a boolean, just use it as is
+				selected = v;
+				break;
+			}
+		}
         return {
+			options: item.options,
             selected: selected,
             readOnly: item.readOnly,
         };
@@ -4136,14 +4143,11 @@ var FormFunctionality = (function FormFunctionalityClosure() {
     function _getRadioButtonProperties(item, viewport, values, basicData) {
         var selected = item.selected;
         if (basicData.correctedId in values) {
-            if (values[basicData.correctedId]==basicData.groupingId) {
-                selected = true;
-            }
-            else {
-                selected = false;
-            }
+			var v = values[basicData.correctedId];
+			selected = (item.options.indexOf(v)>0);
         }
         return {
+			options: item.options,
             selected: selected,
             readOnly: item.readOnly,
         };
@@ -4228,8 +4232,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 	defaultCreationRoutines[fieldTypes.CHECK_BOX] = function(itemProperties, viewport) {
 		var control = document.createElement('input');
-		control.type='checkbox';
-		control.value = 1; // do not believe checkboxs have values in pdfs
+		control.type = 'checkbox';
+		control.value = itemProperties.options[1];		// Checkboxes are often Off/Yes, however this is a custom field controlled by export_value
 		control.style.padding = '0';
 		control.style.margin = '0';
 		control.style.marginLeft = itemProperties.width/2-Math.ceil(4*viewport.scale)+'px';
@@ -4242,8 +4246,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 	defaultCreationRoutines[fieldTypes.RADIO_BUTTON] = function(itemProperties, viewport) {
 		var control = document.createElement('input');
-		control.type='radio';
-		control.value = itemProperties.groupingId;		// Value is in index (matches PDF)
+		control.type = 'radio';
+		control.value = itemProperties.options[1];		// Radio buttons have an Off/Yes style value, however Yes is usually a unique ID unless grouping is turned on
 		control.name = itemProperties.correctedId;		// Name is used to group radio buttons
 		control.style.padding = '0';
 		control.style.margin = '0';
@@ -4328,6 +4332,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		control.style.border = '1px solid #E6E6E6';
 		control.style.display = 'block';
 		if (itemProperties.options) {
+
 			for (var option in itemProperties.options) {
 				var optionElement = document.createElement('option');
 				optionElement.value = itemProperties.options[option]['value'];
