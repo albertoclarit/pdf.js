@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdf = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.171';
-var pdfjsBuild = '9401df1';
+var pdfjsVersion = '1.4.172';
+var pdfjsBuild = '10d22d8';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -3936,7 +3936,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         DROP_DOWN: 'DROP_DOWN',
         PUSH_BUTTON: 'PUSH_BUTTON',
         RADIO_BUTTON: 'RADIO_BUTTON',
-        TEXT: 'TEXT'
+        TEXT: 'TEXT',
+        SIGNATURE:'SIGNATURE'
     };
 
     function assertValidControlClosure(closure) {
@@ -3952,7 +3953,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             throw 'Passed function must accept two arguments: itemProperties and viewport';
         }
     }
-						 
+
 	function assertValidControlTweak(closure) {
 		if (typeof(closure)!='function') {
 			throw "Passed item is not a function";
@@ -4057,6 +4058,9 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             tabindex: _tabIndex++,
             type: itemType(item),
             fieldFlags: item.fieldFlags,
+            hidden: (item.annotationFlags &  0x02) ? true:false,
+            invisible: (item.annotationFlags & 0x01) ? true:false,
+            required : item.required
         };
         if (item.fullName.indexOf('.`')!=-1) {
             prop.correctedId = item.fullName.substring(0,item.fullName.indexOf('.`'));
@@ -4195,6 +4199,9 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             basicData.fontSizeControl = basicData.fontSize;
         }
         switch (basicData.type) {
+            case fieldTypes.SIGNATURE:
+                basicData = _extend(basicData,_getTextProperties(item, viewport, values, basicData));
+                break;
             case fieldTypes.CHECK_BOX:
                 basicData = _extend(basicData,_getCheckBoxProperties(item, viewport, values, basicData));
                 break;
@@ -4332,7 +4339,6 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 		control.style.border = '1px solid #E6E6E6';
 		control.style.display = 'block';
 		if (itemProperties.options) {
-
 			for (var option in itemProperties.options) {
 				var optionElement = document.createElement('option');
 				optionElement.value = itemProperties.options[option]['value'];
@@ -4375,7 +4381,9 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                     break;
                 case 'Ch': // choice
                     return fieldTypes.DROP_DOWN; //drop down
-                    break;
+                case 'Sig':
+                  return fieldTypes.SIGNATURE;
+                  break;
             }
         }
         return fieldTypes.UNSUPPORTED;
@@ -4386,7 +4394,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             'CHECK_BOX': {},
             'TEXT': {},
             'RADIO_BUTTON': {},
-            'DROP_DOWN': {}
+            'DROP_DOWN': {},
+            'SIGNATURE': {}
         };
     }
 
@@ -4425,10 +4434,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 					// If we created a control, add it to a position container, and then the domain
 					if (control) {
-						
+
 						// Do we want to perform any tweaks?
 						if (postCreationTweak) postCreationTweak(fieldType,fieldData.correctedId,control);
-						  
+
 						var container = getPositionContainer(fieldData, viewport);
 						container.appendChild(control);
 						fieldType = determineControlType(control);
@@ -4470,7 +4479,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
          * @param {type} type The type of form element to render (CHECK_BOX, TEXT, DROP_DOWN or RADIO_BUTTON)
          */
         setControlRenderClosureByType: function(closure,type) {
-            if (type!='CHECK_BOX' && type!='TEXT' && type!='DROP_DOWN' && type!='RADIO_BUTTON') {
+            if (type!='CHECK_BOX' && type!='TEXT' && type!='DROP_DOWN' && type!='RADIO_BUTTON' && type!='SIGNATURE') {
                 throw "type must be one of the following: CHECK_BOX, TEXT, DROP_DOWN, RADIO_BUTTON";
             }
             if (!closure) {
@@ -4500,7 +4509,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
                 idClosureOverrides[id]=closure;
             }
         },
-						 
+
 		/**
 		 * Provide a function that will be given a chance to tweak a control after it is created (custom css, angular controls etc could be added here)
 		 * @param {function} postCallback A function with parameters 'filedType', 'elementId' and 'element' that will have chance to customize the field and return nothing
@@ -4514,7 +4523,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
          * @return {array} An array of values of the form elements in format [elementId]=value
          */
         getFormValues: function() {
-						 
+
 			// Process to visit each element in a set of them
 			var values = {};
 			var visitElements = function(set, action) {
@@ -4524,7 +4533,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 					if (element) action(elementId,element);
 				});
 			};
-			
+
 			// Visit each checkbox
 			visitElements(formFields[fieldTypes.CHECK_BOX],function(elementId,element) {
 				values[elementId] = element.checked ? true : false;
@@ -4605,7 +4614,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             pageHolder.appendChild(canvas);
             canvas.height = viewport.height;
             canvas.width = viewport.width;
-						 
+
 			// Tweak canvas to support hi-dpi rendering (without affecting the form fields positioning)
 			var context = canvas.getContext('2d');
 			var devicePixelRatio = window.devicePixelRatio || 1;
@@ -4620,7 +4629,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 			canvas.width = canvas.width * ratio;
 			canvas.height = canvas.height * ratio;
 			if (postCreationTweak) postCreationTweak("CANVAS","canvas",canvas);
-						 
+
             //
             // Render PDF page into canvas context
             //
@@ -4631,6 +4640,41 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             };
 			// Render the page, and optionally the forms overlay
 			page.render(renderContext);
+
+          // create the textbuilder layer
+          var textlayer = document.createElement('div');
+          textlayer.setAttribute("class", "textLayer");
+          textlayer.style.position = 'absolute';
+          textlayer.style.top = '0';
+          textlayer.style.left = '0';
+          pageHolder.appendChild(textlayer);
+
+          textlayer.height = viewport.height;
+          textlayer.width = viewport.width;
+
+          textlayer.style.width = textlayer.width + "px";
+          textlayer.style.height = textlayer.height + "px";
+          textlayer.width = canvas.width * ratio;
+          textlayer.height = canvas.height * ratio;
+
+          /* var textlayerContainer = document.createElement('div');
+           textlayerContainer.style.position = 'absolute';
+           textlayerContainer.setAttribute("class", "textLayer");
+           textlayer.appendChild(textlayerContainer);*/
+
+          var currentPage= page;
+          page.getTextContent().then(function(textContent){
+            // console.log( textContent );
+            var textLayerBuilder = new TextLayerBuilder({
+              textLayerDiv :textlayer,
+              pageIndex :  currentPage.pageIndex,
+              viewport : viewport
+            });
+
+            textLayerBuilder.setTextContent(textContent);
+            textLayerBuilder.render();
+          });
+
 			if (doForm) {
 				var formHolder = document.createElement('form');
 				formHolder.style.position = 'absolute';
@@ -4641,7 +4685,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 				if (postCreationTweak) postCreationTweak("FORM","form",formHolder);
 				pageHolder.appendChild(formHolder);
 				renderForm(formHolder, page, viewport, values);
-			}
+			  }
+
         },
 
         returnFormElementsOnPage: function(page) {
@@ -4665,6 +4710,7 @@ PDFJS.FormFunctionality = FormFunctionality;
 
 exports.FormFunctionality = FormFunctionality;
 }));
+
 
 (function (root, factory) {
   {
