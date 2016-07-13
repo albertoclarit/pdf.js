@@ -162,7 +162,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             fieldFlags: item.fieldFlags,
             hidden: (item.annotationFlags &  0x02) ? true:false,
             invisible: (item.annotationFlags & 0x01) ? true:false,
-            required : item.required
+            required : item.required,
+            pageIndex: item.pageIndex
         };
         if (item.fullName.indexOf('.`')!=-1) {
             prop.correctedId = item.fullName.substring(0,item.fullName.indexOf('.`'));
@@ -522,8 +523,12 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 		// Remove any elements we've been holding on to
 		resetFormFields();
+    var pageIndex = page.pageIndex;
+
 		page.getAnnotations().then(function(items) {
 			items.forEach(function(item) {
+        item.pageIndex=pageIndex;
+
 				var fieldType = itemType(item);
 				if (fieldType) {
 

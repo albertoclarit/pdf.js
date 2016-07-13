@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdf = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.172';
-var pdfjsBuild = '10d22d8';
+var pdfjsVersion = '1.4.173';
+var pdfjsBuild = 'dd53a08';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -4060,7 +4060,8 @@ var FormFunctionality = (function FormFunctionalityClosure() {
             fieldFlags: item.fieldFlags,
             hidden: (item.annotationFlags &  0x02) ? true:false,
             invisible: (item.annotationFlags & 0x01) ? true:false,
-            required : item.required
+            required : item.required,
+            pageIndex: item.pageIndex
         };
         if (item.fullName.indexOf('.`')!=-1) {
             prop.correctedId = item.fullName.substring(0,item.fullName.indexOf('.`'));
@@ -4420,8 +4421,12 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 
 		// Remove any elements we've been holding on to
 		resetFormFields();
+    var pageIndex = page.pageIndex;
+
 		page.getAnnotations().then(function(items) {
 			items.forEach(function(item) {
+        item.pageIndex=pageIndex;
+
 				var fieldType = itemType(item);
 				if (fieldType) {
 
