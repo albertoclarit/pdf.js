@@ -537,7 +537,10 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 					var creationRoutine = customControlHandler || idClosureOverrides[fieldData.correctedId] ||
 										  genericClosureOverrides[fieldType] ||
 										  defaultCreationRoutines[fieldType];
-					var control = creationRoutine ? creationRoutine(fieldData, viewport) : undefined;
+
+          var container = getPositionContainer(fieldData, viewport);
+
+					var control = creationRoutine ? creationRoutine(fieldData, viewport,container) : undefined;
 
 					// If we created a control, add it to a position container, and then the domain
 					if (control) {
@@ -545,7 +548,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 						// Do we want to perform any tweaks?
 						if (postCreationTweak) postCreationTweak(fieldType,fieldData.correctedId,control);
 
-						var container = getPositionContainer(fieldData, viewport);
+
 						container.appendChild(control);
 						fieldType = determineControlType(control);
 						switch (fieldType) {

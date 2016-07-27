@@ -28,8 +28,8 @@ factory((root.pdfjsDistBuildPdf = {}));
   // Use strict in our context only - users might not want it
   'use strict';
 
-var pdfjsVersion = '1.4.173';
-var pdfjsBuild = 'dd53a08';
+var pdfjsVersion = '1.4.175';
+var pdfjsBuild = 'dbcb06d';
 
   var pdfjsFilePath =
     typeof document !== 'undefined' && document.currentScript ?
@@ -4417,7 +4417,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return fieldTypes.TEXT;
     }
 
-	function renderForm(div, page, viewport, values) {
+	function renderForm(div, page, viewport, values,customControlHandler) {
 
 		// Remove any elements we've been holding on to
 		resetFormFields();
@@ -4431,11 +4431,14 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 				if (fieldType) {
 
 					// Can we create a control?
-					var fieldData = getFieldProperties(item, viewport, values);
-					var creationRoutine = idClosureOverrides[fieldData.correctedId] ||
+					var fieldData =  getFieldProperties(item, viewport, values);
+					var creationRoutine = customControlHandler || idClosureOverrides[fieldData.correctedId] ||
 										  genericClosureOverrides[fieldType] ||
 										  defaultCreationRoutines[fieldType];
-					var control = creationRoutine ? creationRoutine(fieldData, viewport) : undefined;
+
+          var container = getPositionContainer(fieldData, viewport);
+
+					var control = creationRoutine ? creationRoutine(fieldData, viewport,container) : undefined;
 
 					// If we created a control, add it to a position container, and then the domain
 					if (control) {
@@ -4443,7 +4446,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 						// Do we want to perform any tweaks?
 						if (postCreationTweak) postCreationTweak(fieldType,fieldData.correctedId,control);
 
-						var container = getPositionContainer(fieldData, viewport);
+
 						container.appendChild(control);
 						fieldType = determineControlType(control);
 						switch (fieldType) {
@@ -4584,7 +4587,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
          * @param {bool} doForm Whether or not to draw the form - defaults to true
          * @param {array} values Optional array of values to place in the form elements
          */
-        render: function (width, height, page, target, doForm, values) {
+        render: function (width, height, page, target, doForm, values,customControlHandler) {
             _tabIndex = 1;
 
             if (typeof(doForm)!='boolean') {
@@ -4689,7 +4692,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 				formHolder.width = viewport.width;
 				if (postCreationTweak) postCreationTweak("FORM","form",formHolder);
 				pageHolder.appendChild(formHolder);
-				renderForm(formHolder, page, viewport, values);
+				renderForm(formHolder, page, viewport, values,customControlHandler);
 			  }
 
         },
