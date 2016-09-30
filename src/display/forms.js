@@ -519,7 +519,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
         return fieldTypes.TEXT;
     }
 
-	function renderForm(div, page, viewport, values,customControlHandler) {
+	function renderForm(div, page, viewport, values,customControlHandler,onfinishLoadForm) {
 
 		// Remove any elements we've been holding on to
 		resetFormFields();
@@ -564,6 +564,9 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 					}
 				}
 			});
+
+      if(onfinishLoadForm)
+        onfinishLoadForm();
 			if (postRenderHook) postRenderHook();
 		});
 
@@ -689,7 +692,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
          * @param {bool} doForm Whether or not to draw the form - defaults to true
          * @param {array} values Optional array of values to place in the form elements
          */
-        render: function (width, height, page, target, doForm, values,customControlHandler) {
+        render: function (width, height, page, target, doForm, values,customControlHandler,onfinishLoadForm) {
             _tabIndex = 1;
 
             if (typeof(doForm)!='boolean') {
@@ -794,7 +797,7 @@ var FormFunctionality = (function FormFunctionalityClosure() {
 				formHolder.width = viewport.width;
 				if (postCreationTweak) postCreationTweak("FORM","form",formHolder);
 				pageHolder.appendChild(formHolder);
-				renderForm(formHolder, page, viewport, values,customControlHandler);
+				renderForm(formHolder, page, viewport, values,customControlHandler,onfinishLoadForm);
 			  }
 
         },
